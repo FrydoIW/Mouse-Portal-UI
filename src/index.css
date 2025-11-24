@@ -1,0 +1,61 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: var(--bg-body);
+  color: var(--card-text-main);
+}
+
+
+/* DARK THEME (default) */
+:root[data-theme="dark"] {
+  --bg-body: radial-gradient(circle at top left, #1e293b 0, #020617 45%, #000 100%);
+  --card-bg: rgba(15, 23, 42, 0.9);
+  --card-border: rgba(148, 163, 184, 0.25);
+  --card-text-main: #f9fafb;
+  --card-text-sub: #9ca3af;
+  --toggle-bg: rgba(15, 23, 42, 0.6);
+  --toggle-text: #e5e7eb;
+  /* pakai gradient untuk dark mode */
+  --input-bg: radial-gradient(circle at top left, #111827, #020617);
+  --input-border: #4b5563;
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --select-option-bg: #020617;
+  --select-option-text: #e5e7eb;
+}
+
+/* LIGHT THEME */
+:root[data-theme="light"] {
+  --bg-body: radial-gradient(circle at top, #e5f0ff 0, #e5e7eb 40%, #d1d5db 100%);
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --card-text-main: #0f172a;
+  --card-text-sub: #6b7280;
+  --toggle-bg: #111827;      /* pil bentuknya tetap gelap */
+  --toggle-text: #f9fafb;    /* teks + icon jadi terang / putih */
+  /* full terang untuk light mode */
+  --input-bg: #f9fafb;
+  --input-border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --select-option-bg: #ffffff;
+  --select-option-text: #111827;
+}
+
+
