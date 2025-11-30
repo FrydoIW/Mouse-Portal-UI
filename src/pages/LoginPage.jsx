@@ -27,12 +27,18 @@ function LoginPage() {
       const result = await loginTkd0200(payload);
 
       if (result.status === "00") {
+        // SIMPAN STATUS LOGIN SEDERHANA
+        localStorage.setItem("authEmail", email);
+
         navigate("/home");
       } else {
         setError(result.remark || "Login gagal");
+        // kalau gagal, pastikan tidak dianggap login
+        localStorage.removeItem("authEmail");
       }
     } catch (err) {
       setError(err.message || "Terjadi kesalahan saat login");
+      localStorage.removeItem("authEmail");
     } finally {
       setLoading(false);
     }
