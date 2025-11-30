@@ -1,38 +1,43 @@
-// src/pages/LoginPage.jsx
+// src/pages/ForgotPasswordPage.jsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
-import { loginTkd0200 } from "../api/tikusClient.js";
+import { resetTkd0300 } from "../api/tikusClient.js";
 
-function LoginPage() {
+function ForgotPasswordPage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
 
     try {
       const payload = {
         email: email,
-        password: password,
+        procType: "VERIFY_EMAIL",
+        newPassword: "",
       };
 
-      const result = await loginTkd0200(payload);
+      const result = await resetTkd0300(payload);
 
       if (result.status === "00") {
-        navigate("/home");
+        // Email benar → lanjut ke halaman ganti password
+        setInfo(result.remark || "Email valid");
+        navigate("/reset-password", {
+          state: { email },
+        });
       } else {
-        setError(result.remark || "Login gagal");
+        setError(result.remark || "Email tidak ditemukan");
       }
     } catch (err) {
-      setError(err.message || "Terjadi kesalahan saat login");
+      setError(err.message || "Terjadi kesalahan saat verifikasi email");
     } finally {
       setLoading(false);
     }
@@ -40,8 +45,8 @@ function LoginPage() {
 
   return (
     <AuthLayout
-      title="Welcome back 👋"
-      subtitle="Masuk dulu untuk lanjut ke dashboard."
+      title="Lupa Password 🔐"
+      subtitle="Masukkan email yang terdaftar. Kami akan cek dulu."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-field">
@@ -57,35 +62,19 @@ function LoginPage() {
           </div>
         </div>
 
-        <div className="form-field">
-          <label className="form-label">Password</label>
-          <div className="input-box">
-            <input
-              type="password"
-              placeholder="••••••••"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-        </div>
-
         {error && <p className="auth-error">{error}</p>}
+        {info && <p className="auth-success">{info}</p>}
 
         <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? "Memproses..." : "Masuk"}
+          {loading ? "Memeriksa..." : "Verifikasi Email"}
         </button>
 
         <p className="auth-switch">
-          Lupa password? <Link to="/forgot-password">Reset di sini</Link>
-        </p>
-
-        <p className="auth-switch">
-          Belum punya akun? <Link to="/register">Daftar dulu</Link>
+          Kembali ke <Link to="/login">halaman login</Link>
         </p>
       </form>
     </AuthLayout>
   );
 }
 
-export default LoginPage;
+export default ForgotPasswordPage;
