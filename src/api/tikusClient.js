@@ -113,3 +113,20 @@ export async function resetTkd0300(payload) {
   // CHANGE_PASS:  { "status": "00", "remark": "Success Change Password" }
   return data;
 }
+
+export async function getAllDataTkd0400() {
+  const response = await fetch("http://localhost:8080/api/getAllData/tkd0400", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ showAllData: "" }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data;
+}
