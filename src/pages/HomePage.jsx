@@ -25,7 +25,7 @@ function HomePage() {
         setResultList(list);
       } catch (err) {
         if (!isMounted) return;
-        setError(err?.message || "Gagal mengambil data TKD0400");
+        setError(err?.message || "Failed Fetch Data");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -537,7 +537,7 @@ function HomePage() {
             <div style={heroEyebrowStyle}>COMPANY PROFILES</div>
             <h1 style={heroTitleStyle}>
               Never stop{" "}
-              <span style={heroTitleAccentStyle}>exploring your data.</span>
+              <span style={heroTitleAccentStyle}>gambling your.</span>
             </h1>
           </div>
 
