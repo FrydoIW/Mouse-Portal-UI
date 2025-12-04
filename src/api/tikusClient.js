@@ -130,3 +130,63 @@ export async function getAllDataTkd0400() {
   const data = await response.json();
   return data;
 }
+
+// =======================
+// UPDATE TKD0500
+// =======================
+// payload = { address, gender, name, position, email, trxAmt }
+export async function updateTkd0500(payload) {
+  const response = await fetch(`${BASE_URL}/updateData/tkd0500`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data.remark || data.message) {
+        message = data.remark || data.message;
+      }
+    } catch (_) {
+      // kalau backend nggak kirim JSON error, abaikan
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json(); // { status, remark }
+  return data;
+}
+
+// =======================
+// DELETE TKD0600
+// =======================
+// payload = { email, status: "00" }
+export async function deleteTkd0600(payload) {
+  const response = await fetch(`${BASE_URL}/updateData/tkd0600`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data.remark || data.message) {
+        message = data.remark || data.message;
+      }
+    } catch (_) {
+      // backend gak ngirim JSON error, skip
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json(); // { status, remark }
+  return data;
+}

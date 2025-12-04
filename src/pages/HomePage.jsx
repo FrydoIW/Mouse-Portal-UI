@@ -1,7 +1,13 @@
 // src/pages/HomePage.jsx
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAllDataTkd0400 } from "../api/tikusClient.js";
+import { useNavigate } from "react-router-dom";   
+import {
+  getAllDataTkd0400,
+  updateTkd0500,
+  deleteTkd0600,
+} from "../api/tikusClient.js";
+
+
 
 function HomePage() {
   const navigate = useNavigate();
@@ -10,6 +16,21 @@ function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resultList, setResultList] = useState([]);
+
+  // state untuk edit/delete
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({
+  name: "",
+  gender: "",
+  position: "",
+  address: "",
+  email: "",
+  salaryAmount: "",
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingEmail, setDeletingEmail] = useState("");
+  const [actionMessage, setActionMessage] = useState(null); // {type,text}
 
   useEffect(() => {
     let isMounted = true;
@@ -25,7 +46,7 @@ function HomePage() {
         setResultList(list);
       } catch (err) {
         if (!isMounted) return;
-        setError(err?.message || "Failed Fetch Data");
+        setError(err?.message || "Gagal mengambil data TKD0400");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -66,6 +87,109 @@ function HomePage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+
+  // ====== HANDLER EDIT / DELETE ======
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setEditForm({
+    name: item.name || "",
+    gender: item.gender || "",
+    position: item.position || "",
+    address: item.address || "",
+    email: item.email || "",
+    salaryAmount: item.trxAmt ?? 0, // prefill dari trxAmt yang ada di TKD0400
+    });
+
+    setActionMessage(null);
+  };
+
+  const closeEditModal = () => {
+    if (isSaving) return;
+    setEditingItem(null);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const reloadList = async () => {
+    const data = await getAllDataTkd0400();
+    const list = Array.isArray(data?.resultList) ? data.resultList : [];
+    setResultList(list);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setActionMessage(null);
+
+    try {
+      const payload = {
+        name: editForm.name,
+        gender: editForm.gender,
+        position: editForm.position,
+        address: editForm.address,
+        email: editForm.email,
+        salaryAmount: Number(editForm.salaryAmount) || 0,
+      };
+
+
+      const res = await updateTkd0500(payload);
+
+      if (res?.status && res.status !== "00") {
+        throw new Error(res.remark || "Gagal update data");
+      }
+
+      setActionMessage({
+        type: "success",
+        text: res?.remark || "Berhasil update data user.",
+      });
+      setEditingItem(null);
+      await reloadList();
+    } catch (err) {
+      setActionMessage({
+        type: "error",
+        text: err?.message || "Terjadi kesalahan saat update data.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (item) => {
+    const ok = window.confirm(
+      `Yakin mau hapus data ${item.name} (${item.email})?`
+    );
+    if (!ok) return;
+
+    setDeletingEmail(item.email);
+    setActionMessage(null);
+
+    try {
+      const res = await deleteTkd0600({
+      email: item.email,
+      status: "00",
+    });
+
+
+      if (res?.status && res.status !== "00") {
+        throw new Error(res.remark || "Gagal menghapus data");
+      }
+
+      setActionMessage({
+        type: "success",
+        text: res?.remark || "Data berhasil dihapus.",
+      });
+      await reloadList();
+    } catch (err) {
+      setActionMessage({
+        type: "error",
+        text: err?.message || "Terjadi kesalahan saat menghapus data.",
+      });
+    } finally {
+      setDeletingEmail("");
+    }
+  };
 
   // ====== STYLING ======
   const pageStyle = {
@@ -255,8 +379,6 @@ function HomePage() {
     alignItems: "stretch",
   };
 
-  // NOTE: kalau mau pakai foto, tinggal ganti background di sini
-  // atau tambahin backgroundImage: "url('/path-ke-gambar.jpg')"
   const heroPreviewCardStyle = {
     width: "170px",
     borderRadius: "1.4rem",
@@ -379,12 +501,19 @@ function HomePage() {
   };
 
   const errorBannerStyle = {
-    marginTop: "1rem",
+    marginTop: "0.75rem",
     padding: "0.75rem 1rem",
     borderRadius: "0.8rem",
     background: "rgba(248, 113, 113, 0.18)",
     border: "1px solid rgba(248, 113, 113, 0.6)",
     fontSize: "0.85rem",
+  };
+
+  const actionBannerBaseStyle = {
+    marginTop: "0.75rem",
+    padding: "0.65rem 0.9rem",
+    borderRadius: "0.8rem",
+    fontSize: "0.8rem",
   };
 
   const cardsContainerStyle = {
@@ -482,6 +611,37 @@ function HomePage() {
     color: "var(--card-text-main)",
   };
 
+  const cardActionsRowStyle = {
+    marginTop: "0.6rem",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "0.45rem",
+  };
+
+  const smallButtonBaseStyle = {
+    padding: "0.35rem 0.8rem",
+    borderRadius: "999px",
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    border: "1px solid transparent",
+    cursor: "pointer",
+  };
+
+  const editButtonStyle = {
+    ...smallButtonBaseStyle,
+    background:
+      "linear-gradient(135deg, rgba(56,189,248,0.15), rgba(37,99,235,0.6))",
+    borderColor: "rgba(59,130,246,0.9)",
+    color: "#e5e7eb",
+  };
+
+  const deleteButtonStyle = {
+    ...smallButtonBaseStyle,
+    background: "rgba(248,113,113,0.12)",
+    borderColor: "rgba(248,113,113,0.8)",
+    color: "#fecaca",
+  };
+
   const footerStyle = {
     marginTop: "1.5rem",
     fontSize: "0.75rem",
@@ -507,6 +667,105 @@ function HomePage() {
     background: "rgba(148,163,184,0.8)",
   };
 
+  // modal styles
+  const modalBackdropStyle = {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15,23,42,0.85)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 50,
+  };
+
+  const modalCardStyle = {
+    width: "100%",
+    maxWidth: "520px",
+    background: "var(--card-bg)",
+    borderRadius: "1rem",
+    border: "1px solid var(--card-border)",
+    padding: "1.5rem 1.7rem 1.7rem",
+    boxShadow: "0 24px 60px rgba(15,23,42,0.9)",
+  };
+
+  const modalHeaderStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "1rem",
+  };
+
+  const modalTitleStyle = {
+    fontSize: "1rem",
+    fontWeight: 600,
+  };
+
+  const modalCloseButtonStyle = {
+    border: "none",
+    background: "transparent",
+    color: "var(--card-text-sub)",
+    cursor: "pointer",
+    fontSize: "1.2rem",
+  };
+
+  const modalFormGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: "0.75rem 0.9rem",
+  };
+
+  const modalFieldStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
+    fontSize: "0.8rem",
+  };
+
+  const modalLabelStyle = {
+    color: "var(--card-text-sub)",
+  };
+
+  const modalInputStyle = {
+    borderRadius: "0.6rem",
+    border: "1px solid rgba(148,163,184,0.4)",
+    padding: "0.45rem 0.65rem",
+    background: "rgba(15,23,42,0.85)",
+    color: "var(--card-text-main)",
+    fontSize: "0.85rem",
+    outline: "none",
+  };
+
+  const modalFooterStyle = {
+    marginTop: "1.2rem",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "0.75rem",
+    flexWrap: "wrap",
+  };
+
+  const modalPrimaryButtonStyle = {
+    padding: "0.55rem 1.2rem",
+    borderRadius: "999px",
+    border: "none",
+    background:
+      "linear-gradient(135deg, #22c55e 0%, #06b6d4 40%, #3b82f6 100%)",
+    color: "#0b1120",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
+  const modalSecondaryButtonStyle = {
+    padding: "0.5rem 1rem",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.6)",
+    background: "transparent",
+    color: "var(--card-text-sub)",
+    fontSize: "0.8rem",
+    cursor: "pointer",
+  };
+
   return (
     <main style={pageStyle}>
       {/* TOP BAR */}
@@ -515,9 +774,7 @@ function HomePage() {
           <div style={logoCircleStyle}>TK</div>
           <div>
             <div style={brandTitleStyle}>Tikus Dashboard</div>
-            <div style={brandSubtitleStyle}>
-              Monitor Your Data Realtime
-            </div>
+            <div style={brandSubtitleStyle}>Monitor Your Data Realtime</div>
           </div>
         </div>
         <div style={topRightStyle}>
@@ -541,17 +798,13 @@ function HomePage() {
             </h1>
           </div>
 
-          <p style={heroSubtitleStyle}>
-            TIKUS TEAM OVERVIEW
-          </p>
+          <p style={heroSubtitleStyle}>TIKUS TEAM OVERVIEW</p>
 
           <div style={heroActionsStyle}>
             <button style={primaryCtaStyle} onClick={handleScrollToData}>
               TEAM INFORMATION
             </button>
-            <button style={secondaryCtaStyle}>
-              WAITING FOR UPDATE !!!
-            </button>
+            <button style={secondaryCtaStyle}>WAITING FOR UPDATE !!!</button>
           </div>
 
           <div style={heroStatsRowStyle}>
@@ -565,7 +818,7 @@ function HomePage() {
             </div>
             <div style={heroStatCardStyle}>
               <div style={heroStatNumberStyle}>
-                {resultList.length > 0 ? "Real‑time" : "Menunggu data"}
+                {resultList.length > 0 ? "Real-time" : "Menunggu data"}
               </div>
               <div style={heroStatLabelStyle}>System Information</div>
             </div>
@@ -575,34 +828,27 @@ function HomePage() {
         <div style={heroCardsColStyle}>
           <div style={heroCardsTrackStyle}>
             {resultList.slice(0, 3).map((item, index) => (
-  <article
-    key={item.refNo ?? index}
-    style={heroPreviewCardStyle}
-  >
-    <div style={heroPreviewOverlayStyle} />
-    <div style={{ position: "relative", zIndex: 1 }}>
-      <div style={heroPreviewLabelStyle}>Profil #{index + 1}</div>
-      <div style={heroPreviewNameStyle}>{item.name}</div>
-      <div style={heroPreviewMetaStyle}>
-        {item.gender} • {item.position}
-      </div>
-    </div>
-    <div style={heroPreviewFooterStyle}>
-      <span style={heroPreviewBadgeStyle}>
-        Trx Rp {formatIdr(item.trxAmt)}
-      </span>
-      <span>Ref: {item.refNo}</span>
-    </div>
-  </article>
-))}
-
+              <article key={item.refNo ?? index} style={heroPreviewCardStyle}>
+                <div style={heroPreviewOverlayStyle} />
+                <div style={{ position: "relative", zIndex: 1 }}>
+                  <div style={heroPreviewLabelStyle}>Profil #{index + 1}</div>
+                  <div style={heroPreviewNameStyle}>{item.name}</div>
+                  <div style={heroPreviewMetaStyle}>
+                    {item.gender} • {item.position}
+                  </div>
+                </div>
+                <div style={heroPreviewFooterStyle}>
+                  <span style={heroPreviewBadgeStyle}>
+                    Trx Rp {formatIdr(item.trxAmt)}
+                  </span>
+                </div>
+              </article>
+            ))}
 
             {resultList.length === 0 && (
               <article style={heroEmptyCardStyle}>
                 <div style={heroPreviewOverlayStyle} />
-                <p style={heroEmptyTextStyle}>
-                  No Data Found
-                </p>
+                <p style={heroEmptyTextStyle}>No Data Found</p>
               </article>
             )}
           </div>
@@ -614,28 +860,40 @@ function HomePage() {
         <div style={sectionHeaderRowStyle}>
           <div>
             <h2 style={sectionTitleStyle}>Data ACTIVE USER</h2>
-            <p style={sectionSubtitleStyle}>
-              Data Summary
-            </p>
+            <p style={sectionSubtitleStyle}>Data Summary</p>
           </div>
           <span style={pillCountStyle}>{resultList.length} data</span>
         </div>
 
         <div style={statusRowStyle}>
-          {loading && (
-            <p style={infoTextStyle}>Get Data From Backend ...</p>
-          )}
+          {loading && <p style={infoTextStyle}>Get Data From Backend ...</p>}
 
           {!loading && !error && resultList.length === 0 && (
-            <p style={infoTextStyle}>
-              No Data Found
-            </p>
+            <p style={infoTextStyle}>No Data Found</p>
           )}
 
           {!loading && error && (
             <div style={errorBannerStyle}>
               <strong>Ups, Error: </strong>
               <span>{error}</span>
+            </div>
+          )}
+
+          {actionMessage && (
+            <div
+              style={{
+                ...actionBannerBaseStyle,
+                background:
+                  actionMessage.type === "success"
+                    ? "rgba(34,197,94,0.12)"
+                    : "rgba(248,113,113,0.12)",
+                border:
+                  actionMessage.type === "success"
+                    ? "1px solid rgba(34,197,94,0.7)"
+                    : "1px solid rgba(248,113,113,0.7)",
+              }}
+            >
+              {actionMessage.text}
             </div>
           )}
         </div>
@@ -679,6 +937,24 @@ function HomePage() {
                     <div style={valueStyle}>{item.email}</div>
                   </div>
                 </div>
+
+                <div style={cardActionsRowStyle}>
+                  <button
+                    type="button"
+                    style={editButtonStyle}
+                    onClick={() => openEditModal(item)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    style={deleteButtonStyle}
+                    onClick={() => handleDelete(item)}
+                    disabled={deletingEmail === item.email}
+                  >
+                    {deletingEmail === item.email ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -695,6 +971,71 @@ function HomePage() {
           <span>Frontend by React + Vite</span>
         </div>
       </footer>
+
+      {/* MODAL UPDATE DATA */}
+      {editingItem && (
+        <div style={modalBackdropStyle} onClick={closeEditModal}>
+          <div
+            style={modalCardStyle}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <div style={modalHeaderStyle}>
+              <div>
+                <div style={modalTitleStyle}>Update Data User</div>
+                <div style={sectionSubtitleStyle}>
+                  {editingItem.name} — {editingItem.email}
+                </div>
+              </div>
+              <button
+                type="button"
+                style={modalCloseButtonStyle}
+                onClick={closeEditModal}
+              >
+                ×
+              </button>
+            </div>
+
+                        <form onSubmit={handleSaveEdit}>
+              <div style={modalFormGridStyle}>
+                {/* ... field2 sebelumnya ... */}
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Salary Amount</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.salaryAmount}
+                    onChange={(e) =>
+                      handleEditChange("salaryAmount", e.target.value)
+                    }
+                  />
+                </div>      {/* tutup div field salary */}
+              </div>        {/* tutup div modalFormGridStyle */}
+
+              <div style={modalFooterStyle}>
+                <button
+                  type="button"
+                  style={modalSecondaryButtonStyle}
+                  onClick={closeEditModal}
+                  disabled={isSaving}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  style={modalPrimaryButtonStyle}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
