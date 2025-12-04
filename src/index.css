@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
+/* RESET */
 *,
 *::before,
 *::after {
@@ -14,6 +15,94 @@ body,
   height: 100%;
 }
 
+/* DEFAULT (DARK) THEME VALUES */
+:root {
+  --bg-body:
+    radial-gradient(
+      circle at top left,
+      rgba(30, 41, 59, 0.9) 0,
+      rgba(2, 6, 23, 0.96) 45%,
+      rgba(0, 0, 0, 0.4) 100%
+    ),
+    url("/card-background.jpg");
+
+  --card-bg: rgba(15, 23, 42, 0.9);
+  --card-border: rgba(148, 163, 184, 0.25);
+  --card-text-main: #f9fafb;
+  --card-text-sub: #9ca3af;
+
+  --toggle-bg: rgba(15, 23, 42, 0.6);
+  --toggle-text: #e5e7eb;
+
+  /* input / select */
+  --input-bg: radial-gradient(circle at top left, #111827, #020617);
+  --input-border: #4b5563;
+
+  /* aksen warna utama */
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+
+  --select-option-bg: #020617;
+  --select-option-text: #e5e7eb;
+}
+
+/* DARK THEME (eksplisit) */
+:root[data-theme="dark"] {
+  --bg-body:
+    radial-gradient(
+      circle at top left,
+      rgba(30, 41, 59, 0.9) 0,
+      rgba(2, 6, 23, 0.96) 45%,
+      rgba(0, 0, 0, 0.4) 100%
+    ),
+    url("/card-background.jpg");
+
+  --card-bg: rgba(15, 23, 42, 0.9);
+  --card-border: rgba(148, 163, 184, 0.25);
+  --card-text-main: #f9fafb;
+  --card-text-sub: #9ca3af;
+
+  --toggle-bg: rgba(15, 23, 42, 0.6);
+  --toggle-text: #e5e7eb;
+
+  --input-bg: radial-gradient(circle at top left, #111827, #020617);
+  --input-border: #4b5563;
+
+  --primary: #38bdf8;
+  --primary-hover: #0ea5e9;
+
+  --select-option-bg: #020617;
+  --select-option-text: #e5e7eb;
+}
+
+/* LIGHT THEME */
+:root[data-theme="light"] {
+  --bg-body: radial-gradient(
+    circle at top,
+    #e5f0ff 0,
+    #e5e7eb 40%,
+    #d1d5db 100%
+  );
+
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --card-text-main: #0f172a;
+  --card-text-sub: #6b7280;
+
+  --toggle-bg: #111827;   /* pill tetap gelap biar kontras */
+  --toggle-text: #f9fafb;
+
+  --input-bg: #f9fafb;
+  --input-border: #e5e7eb;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+
+  --select-option-bg: #ffffff;
+  --select-option-text: #111827;
+}
+
+/* BODY GLOBAL */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
@@ -21,49 +110,18 @@ body {
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center top;
-  background-attachment: fixed; /* opsional: biar kayak parallax dikit */
+  background-attachment: fixed; /* efek parallax ringan */
   color: var(--card-text-main);
 }
 
-
-
-/* DARK THEME (default) */
-:root[data-theme="dark"] {
-  --bg-body:
-    radial-gradient(circle at top left, rgba(30,41,59,0.9) 0, rgba(2,6,23,0.96) 45%, rgba(0,0,0,0.4) 100%),
-    url("/card-background.jpg");
-  --card-bg: rgba(15, 23, 42, 0.9);
-  --card-border: rgba(148, 163, 184, 0.25);
-  --card-text-main: #f9fafb;
-  --card-text-sub: #9ca3af;
-  --toggle-bg: rgba(15, 23, 42, 0.6);
-  --toggle-text: #e5e7eb;
-  /* pakai gradient untuk dark mode */
-  --input-bg: radial-gradient(circle at top left, #111827, #020617);
-  --input-border: #4b5563;
-  --primary: #38bdf8;
-  --primary-hover: #0ea5e9;
-  --select-option-bg: #020617;
-  --select-option-text: #e5e7eb;
+/* (opsional) hilangin outline biru jelek di button / input pas click */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
-
-/* LIGHT THEME */
-:root[data-theme="light"] {
-  --bg-body: radial-gradient(circle at top, #e5f0ff 0, #e5e7eb 40%, #d1d5db 100%);
-  --card-bg: #ffffff;
-  --card-border: #e5e7eb;
-  --card-text-main: #0f172a;
-  --card-text-sub: #6b7280;
-  --toggle-bg: #111827;      /* pil bentuknya tetap gelap */
-  --toggle-text: #f9fafb;    /* teks + icon jadi terang / putih */
-  /* full terang untuk light mode */
-  --input-bg: #f9fafb;
-  --input-border: #e5e7eb;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --select-option-bg: #ffffff;
-  --select-option-text: #111827;
+button {
+  background: none;
 }
-
-

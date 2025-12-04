@@ -1,6 +1,6 @@
 // src/pages/HomePage.jsx
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";   
+import { useNavigate } from "react-router-dom";
 import {
   getAllDataTkd0400,
   updateTkd0500,
@@ -8,35 +8,53 @@ import {
   registerTkd0100,
 } from "../api/tikusClient.js";
 
-
-
 function HomePage() {
   const navigate = useNavigate();
   const email = localStorage.getItem("authEmail");
 
+  // THEME (dark / light)
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("tk-theme") || "dark"
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    localStorage.setItem("tk-theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
+  // DATA STATE
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resultList, setResultList] = useState([]);
 
-  // state untuk edit/delete
+  // EDIT STATE
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
-  name: "",
-  gender: "",
-  position: "",
-  address: "",
-  email: "",
-  salaryAmount: "",
+    name: "",
+    gender: "",
+    position: "",
+    address: "",
+    email: "",
+    salaryAmount: "",
   });
-
   const [isSaving, setIsSaving] = useState(false);
-  const [deletingEmail, setDeletingEmail] = useState("");
-  const [actionMessage, setActionMessage] = useState(null); // {type,text}
 
-    // search
+  // DELETE STATE
+  const [deletingEmail, setDeletingEmail] = useState("");
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+
+  // GLOBAL ACTION MESSAGE
+  const [actionMessage, setActionMessage] = useState(null); // { type, text }
+
+  // SEARCH STATE
   const [searchQuery, setSearchQuery] = useState("");
 
-  // add user modal
+  // ADD USER STATE
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState({
     name: "",
@@ -48,10 +66,7 @@ function HomePage() {
   });
   const [isAdding, setIsAdding] = useState(false);
 
-  // confirm delete
-  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
-
-
+  // FETCH DATA
   useEffect(() => {
     let isMounted = true;
 
@@ -81,6 +96,12 @@ function HomePage() {
     };
   }, []);
 
+  const reloadList = async () => {
+    const data = await getAllDataTkd0400();
+    const list = Array.isArray(data?.resultList) ? data.resultList : [];
+    setResultList(list);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("authEmail");
     navigate("/login");
@@ -102,7 +123,8 @@ function HomePage() {
     [resultList]
   );
 
-    const filteredList = useMemo(() => {
+  // FILTERED LIST (SEARCH)
+  const filteredList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return resultList;
 
@@ -118,29 +140,73 @@ function HomePage() {
     });
   }, [resultList, searchQuery]);
 
-
   const formatIdr = (value) =>
     Number(value || 0).toLocaleString("id-ID", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
 
-  // ====== HANDLER EDIT / DELETE ======
+  // ====== EDIT HANDLER ======
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditForm({
-    name: item.name || "",
-    gender: item.gender || "",
-    position: item.position || "",
-    address: item.address || "",
-    email: item.email || "",
-    salaryAmount: item.trxAmt ?? 0, // prefill dari trxAmt yang ada di TKD0400
+      name: item.name || "",
+      gender: item.gender || "",
+      position: item.position || "",
+      address: item.address || "",
+      email: item.email || "",
+      salaryAmount: item.trxAmt ?? 0,
     });
-
     setActionMessage(null);
   };
 
-    // === ADD USER ===
+  const closeEditModal = () => {
+    if (isSaving) return;
+    setEditingItem(null);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setActionMessage(null);
+
+    try {
+      const payload = {
+        name: editForm.name,
+        gender: editForm.gender,
+        position: editForm.position,
+        address: editForm.address,
+        email: editForm.email,
+        salaryAmount: Number(editForm.salaryAmount) || 0,
+      };
+
+      const res = await updateTkd0500(payload);
+
+      if (res?.status && res.status !== "00") {
+        throw new Error(res.remark || "Gagal update data");
+      }
+
+      setActionMessage({
+        type: "success",
+        text: res?.remark || "Berhasil update data user.",
+      });
+      setEditingItem(null);
+      await reloadList();
+    } catch (err) {
+      setActionMessage({
+        type: "error",
+        text: err?.message || "Terjadi kesalahan saat update data.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ====== ADD USER HANDLER ======
   const openAddModal = () => {
     setAddForm({
       name: "",
@@ -200,61 +266,7 @@ function HomePage() {
     }
   };
 
-
-  const closeEditModal = () => {
-    if (isSaving) return;
-    setEditingItem(null);
-  };
-
-  const handleEditChange = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const reloadList = async () => {
-    const data = await getAllDataTkd0400();
-    const list = Array.isArray(data?.resultList) ? data.resultList : [];
-    setResultList(list);
-  };
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setActionMessage(null);
-
-    try {
-      const payload = {
-        name: editForm.name,
-        gender: editForm.gender,
-        position: editForm.position,
-        address: editForm.address,
-        email: editForm.email,
-        salaryAmount: Number(editForm.salaryAmount) || 0,
-      };
-
-
-      const res = await updateTkd0500(payload);
-
-      if (res?.status && res.status !== "00") {
-        throw new Error(res.remark || "Gagal update data");
-      }
-
-      setActionMessage({
-        type: "success",
-        text: res?.remark || "Berhasil update data user.",
-      });
-      setEditingItem(null);
-      await reloadList();
-    } catch (err) {
-      setActionMessage({
-        type: "error",
-        text: err?.message || "Terjadi kesalahan saat update data.",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-    // bukan langsung call API, tapi buka modal konfirmasi
+  // ====== DELETE HANDLER ======
   const handleDeleteClick = (item) => {
     setConfirmDeleteItem(item);
     setActionMessage(null);
@@ -357,6 +369,26 @@ function HomePage() {
   const welcomeTextStyle = {
     fontSize: "0.9rem",
     color: "var(--card-text-sub)",
+  };
+
+  const themeToggleStyle = {
+    padding: "0.25rem 0.6rem",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.6)",
+    background: "var(--toggle-bg)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.35rem",
+    fontSize: "0.75rem",
+    color: "var(--toggle-text)",
+    cursor: "pointer",
+    backdropFilter: "blur(12px)",
+  };
+
+  const themeDotStyle = {
+    width: "0.6rem",
+    height: "0.6rem",
+    borderRadius: "999px",
   };
 
   const logoutButtonStyle = {
@@ -569,7 +601,14 @@ function HomePage() {
     boxShadow: "0 18px 45px rgba(15, 23, 42, 0.6)",
   };
 
-    const sectionHeaderRightStyle = {
+  const sectionHeaderRowStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "1rem",
+  };
+
+  const sectionHeaderRightStyle = {
     display: "flex",
     alignItems: "center",
     gap: "0.6rem",
@@ -577,12 +616,22 @@ function HomePage() {
     justifyContent: "flex-end",
   };
 
+  const sectionTitleStyle = {
+    fontSize: "1.15rem",
+    marginBottom: "0.25rem",
+  };
+
+  const sectionSubtitleStyle = {
+    fontSize: "0.85rem",
+    color: "var(--card-text-sub)",
+  };
+
   const searchInputStyle = {
     minWidth: "180px",
     padding: "0.35rem 0.6rem",
     borderRadius: "999px",
-    border: "1px solid rgba(148,163,184,0.5)",
-    background: "rgba(15,23,42,0.8)",
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
     color: "var(--card-text-main)",
     fontSize: "0.8rem",
     outline: "none",
@@ -598,24 +647,6 @@ function HomePage() {
     fontSize: "0.8rem",
     fontWeight: 600,
     cursor: "pointer",
-  };
-
-
-  const sectionHeaderRowStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "1rem",
-  };
-
-  const sectionTitleStyle = {
-    fontSize: "1.15rem",
-    marginBottom: "0.25rem",
-  };
-
-  const sectionSubtitleStyle = {
-    fontSize: "0.85rem",
-    color: "var(--card-text-sub)",
   };
 
   const pillCountStyle = {
@@ -805,7 +836,7 @@ function HomePage() {
     background: "rgba(148,163,184,0.8)",
   };
 
-  // modal styles
+  // MODAL STYLES
   const modalBackdropStyle = {
     position: "fixed",
     inset: 0,
@@ -865,9 +896,9 @@ function HomePage() {
 
   const modalInputStyle = {
     borderRadius: "0.6rem",
-    border: "1px solid rgba(148,163,184,0.4)",
+    border: "1px solid var(--input-border)",
     padding: "0.45rem 0.65rem",
-    background: "rgba(15,23,42,0.85)",
+    background: "var(--input-bg)",
     color: "var(--card-text-main)",
     fontSize: "0.85rem",
     outline: "none",
@@ -904,6 +935,7 @@ function HomePage() {
     cursor: "pointer",
   };
 
+  // ====== JSX RETURN ======
   return (
     <main style={pageStyle}>
       {/* TOP BAR */}
@@ -916,6 +948,17 @@ function HomePage() {
           </div>
         </div>
         <div style={topRightStyle}>
+          <button style={themeToggleStyle} onClick={toggleTheme}>
+            <div
+              style={{
+                ...themeDotStyle,
+                background:
+                  theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
+              }}
+            />
+            <span>{theme === "light" ? "Light" : "Dark"}</span>
+          </button>
+
           <div style={welcomeTextStyle}>
             {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
           </div>
@@ -995,7 +1038,7 @@ function HomePage() {
 
       {/* DATA SECTION */}
       <section id="tkd0400-section" style={sectionWrapperStyle}>
-                <div style={sectionHeaderRowStyle}>
+        <div style={sectionHeaderRowStyle}>
           <div>
             <h2 style={sectionTitleStyle}>DATA ACTIVE USER</h2>
             <p style={sectionSubtitleStyle}>Data Summary</p>
@@ -1021,11 +1064,10 @@ function HomePage() {
           </div>
         </div>
 
-
         <div style={statusRowStyle}>
           {loading && <p style={infoTextStyle}>Get Data From Backend ...</p>}
 
-                    {!loading && !error && resultList.length === 0 && (
+          {!loading && !error && resultList.length === 0 && (
             <p style={infoTextStyle}>No data from backend.</p>
           )}
 
@@ -1037,7 +1079,6 @@ function HomePage() {
                 Tidak ada data yang cocok dengan pencarian.
               </p>
             )}
-
 
           {!loading && error && (
             <div style={errorBannerStyle}>
@@ -1065,7 +1106,7 @@ function HomePage() {
           )}
         </div>
 
-                {!loading && !error && filteredList.length > 0 && (
+        {!loading && !error && filteredList.length > 0 && (
           <div style={cardsContainerStyle}>
             {filteredList.map((item, index) => (
               <div key={item.refNo ?? index} style={itemCardStyle}>
@@ -1121,7 +1162,6 @@ function HomePage() {
                   >
                     Delete
                   </button>
-
                 </div>
               </div>
             ))}
@@ -1129,6 +1169,7 @@ function HomePage() {
         )}
       </section>
 
+      {/* FOOTER */}
       <footer style={footerStyle}>
         <div>
           <strong>Tikus Dashboard</strong> &mdash; www.Kamboja.com
@@ -1140,7 +1181,133 @@ function HomePage() {
         </div>
       </footer>
 
-            {/* MODAL ADD USER */}
+      {/* MODAL EDIT USER */}
+      {editingItem && (
+        <div style={modalBackdropStyle} onClick={closeEditModal}>
+          <div
+            style={modalCardStyle}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={modalHeaderStyle}>
+              <div>
+                <div style={modalTitleStyle}>Edit User</div>
+                <div style={sectionSubtitleStyle}>
+                  Ubah data user lalu simpan perubahan.
+                </div>
+              </div>
+              <button
+                type="button"
+                style={modalCloseButtonStyle}
+                onClick={closeEditModal}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div style={modalFormGridStyle}>
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Nama</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.name}
+                    onChange={(e) =>
+                      handleEditChange("name", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Posisi</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.position}
+                    onChange={(e) =>
+                      handleEditChange("position", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Gender</label>
+                  <select
+                    style={modalInputStyle}
+                    value={editForm.gender}
+                    onChange={(e) =>
+                      handleEditChange("gender", e.target.value)
+                    }
+                    required
+                  >
+                    <option value="">Pilih</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Email</label>
+                  <input
+                    style={modalInputStyle}
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) =>
+                      handleEditChange("email", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
+                  <label style={modalLabelStyle}>Alamat</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.address}
+                    onChange={(e) =>
+                      handleEditChange("address", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Salary Amount</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.salaryAmount}
+                    onChange={(e) =>
+                      handleEditChange("salaryAmount", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div style={modalFooterStyle}>
+                <button
+                  type="button"
+                  style={modalSecondaryButtonStyle}
+                  onClick={closeEditModal}
+                  disabled={isSaving}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  style={modalPrimaryButtonStyle}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ADD USER */}
       {isAddModalOpen && (
         <div style={modalBackdropStyle} onClick={closeAddModal}>
           <div
@@ -1266,7 +1433,7 @@ function HomePage() {
         </div>
       )}
 
-            {/* MODAL KONFIRMASI DELETE */}
+      {/* MODAL KONFIRMASI DELETE */}
       {confirmDeleteItem && (
         <div style={modalBackdropStyle} onClick={handleCancelDelete}>
           <div
@@ -1300,7 +1467,8 @@ function HomePage() {
                 style={modalSecondaryButtonStyle}
                 onClick={handleCancelDelete}
                 disabled={
-                  deletingEmail === (confirmDeleteItem && confirmDeleteItem.email)
+                  deletingEmail ===
+                  (confirmDeleteItem && confirmDeleteItem.email)
                 }
               >
                 Batal
@@ -1315,7 +1483,8 @@ function HomePage() {
                 }}
                 onClick={handleConfirmDelete}
                 disabled={
-                  deletingEmail === (confirmDeleteItem && confirmDeleteItem.email)
+                  deletingEmail ===
+                  (confirmDeleteItem && confirmDeleteItem.email)
                 }
               >
                 {deletingEmail ===
@@ -1327,8 +1496,6 @@ function HomePage() {
           </div>
         </div>
       )}
-
-
     </main>
   );
 }
