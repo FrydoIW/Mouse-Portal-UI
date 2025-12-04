@@ -5,6 +5,7 @@ import {
   getAllDataTkd0400,
   updateTkd0500,
   deleteTkd0600,
+  registerTkd0100,
 } from "../api/tikusClient.js";
 
 
@@ -31,6 +32,25 @@ function HomePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingEmail, setDeletingEmail] = useState("");
   const [actionMessage, setActionMessage] = useState(null); // {type,text}
+
+    // search
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // add user modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: "",
+    gender: "",
+    position: "",
+    address: "",
+    email: "",
+    salaryAmount: "",
+  });
+  const [isAdding, setIsAdding] = useState(false);
+
+  // confirm delete
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -82,6 +102,23 @@ function HomePage() {
     [resultList]
   );
 
+    const filteredList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return resultList;
+
+    return resultList.filter((item) => {
+      const name = (item.name || "").toLowerCase();
+      const emailUser = (item.email || "").toLowerCase();
+      const position = (item.position || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        emailUser.includes(q) ||
+        position.includes(q)
+      );
+    });
+  }, [resultList, searchQuery]);
+
+
   const formatIdr = (value) =>
     Number(value || 0).toLocaleString("id-ID", {
       minimumFractionDigits: 2,
@@ -102,6 +139,67 @@ function HomePage() {
 
     setActionMessage(null);
   };
+
+    // === ADD USER ===
+  const openAddModal = () => {
+    setAddForm({
+      name: "",
+      gender: "",
+      position: "",
+      address: "",
+      email: "",
+      salaryAmount: "",
+    });
+    setActionMessage(null);
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    if (isAdding) return;
+    setIsAddModalOpen(false);
+  };
+
+  const handleAddChange = (field, value) => {
+    setAddForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveAdd = async (e) => {
+    e.preventDefault();
+    setIsAdding(true);
+    setActionMessage(null);
+
+    try {
+      const payload = {
+        name: addForm.name,
+        gender: addForm.gender,
+        position: addForm.position,
+        address: addForm.address,
+        email: addForm.email,
+        salaryAmount: Number(addForm.salaryAmount) || 0,
+      };
+
+      const res = await registerTkd0100(payload);
+
+      if (res?.status && res.status !== "00") {
+        throw new Error(res.remark || "Gagal menambahkan user");
+      }
+
+      setActionMessage({
+        type: "success",
+        text: res?.remark || "User berhasil ditambahkan.",
+      });
+      setIsAddModalOpen(false);
+      await reloadList();
+    } catch (err) {
+      setActionMessage({
+        type: "error",
+        text: err?.message || "Terjadi kesalahan saat menambahkan user.",
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
 
   const closeEditModal = () => {
     if (isSaving) return;
@@ -156,21 +254,24 @@ function HomePage() {
     }
   };
 
-  const handleDelete = async (item) => {
-    const ok = window.confirm(
-      `Yakin mau hapus data ${item.name} (${item.email})?`
-    );
-    if (!ok) return;
+    // bukan langsung call API, tapi buka modal konfirmasi
+  const handleDeleteClick = (item) => {
+    setConfirmDeleteItem(item);
+    setActionMessage(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteItem) return;
+    const item = confirmDeleteItem;
 
     setDeletingEmail(item.email);
     setActionMessage(null);
 
     try {
       const res = await deleteTkd0600({
-      email: item.email,
-      status: "00",
-    });
-
+        email: item.email,
+        status: "00",
+      });
 
       if (res?.status && res.status !== "00") {
         throw new Error(res.remark || "Gagal menghapus data");
@@ -180,6 +281,7 @@ function HomePage() {
         type: "success",
         text: res?.remark || "Data berhasil dihapus.",
       });
+      setConfirmDeleteItem(null);
       await reloadList();
     } catch (err) {
       setActionMessage({
@@ -189,6 +291,10 @@ function HomePage() {
     } finally {
       setDeletingEmail("");
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDeleteItem(null);
   };
 
   // ====== STYLING ======
@@ -462,6 +568,38 @@ function HomePage() {
     padding: "1.6rem 1.5rem 1.8rem",
     boxShadow: "0 18px 45px rgba(15, 23, 42, 0.6)",
   };
+
+    const sectionHeaderRightStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.6rem",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+  };
+
+  const searchInputStyle = {
+    minWidth: "180px",
+    padding: "0.35rem 0.6rem",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.5)",
+    background: "rgba(15,23,42,0.8)",
+    color: "var(--card-text-main)",
+    fontSize: "0.8rem",
+    outline: "none",
+  };
+
+  const addButtonStyle = {
+    padding: "0.4rem 0.9rem",
+    borderRadius: "999px",
+    border: "none",
+    background:
+      "linear-gradient(135deg, #22c55e 0%, #06b6d4 40%, #3b82f6 100%)",
+    color: "#0b1120",
+    fontSize: "0.8rem",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
 
   const sectionHeaderRowStyle = {
     display: "flex",
@@ -857,20 +995,49 @@ function HomePage() {
 
       {/* DATA SECTION */}
       <section id="tkd0400-section" style={sectionWrapperStyle}>
-        <div style={sectionHeaderRowStyle}>
+                <div style={sectionHeaderRowStyle}>
           <div>
-            <h2 style={sectionTitleStyle}>Data ACTIVE USER</h2>
+            <h2 style={sectionTitleStyle}>DATA ACTIVE USER</h2>
             <p style={sectionSubtitleStyle}>Data Summary</p>
           </div>
-          <span style={pillCountStyle}>{resultList.length} data</span>
+          <div style={sectionHeaderRightStyle}>
+            <input
+              style={searchInputStyle}
+              type="text"
+              placeholder="Search name / email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button
+              type="button"
+              style={addButtonStyle}
+              onClick={openAddModal}
+            >
+              + Add User
+            </button>
+            <span style={pillCountStyle}>
+              {filteredList.length} / {resultList.length} data
+            </span>
+          </div>
         </div>
+
 
         <div style={statusRowStyle}>
           {loading && <p style={infoTextStyle}>Get Data From Backend ...</p>}
 
-          {!loading && !error && resultList.length === 0 && (
-            <p style={infoTextStyle}>No Data Found</p>
+                    {!loading && !error && resultList.length === 0 && (
+            <p style={infoTextStyle}>No data from backend.</p>
           )}
+
+          {!loading &&
+            !error &&
+            resultList.length > 0 &&
+            filteredList.length === 0 && (
+              <p style={infoTextStyle}>
+                Tidak ada data yang cocok dengan pencarian.
+              </p>
+            )}
+
 
           {!loading && error && (
             <div style={errorBannerStyle}>
@@ -898,9 +1065,9 @@ function HomePage() {
           )}
         </div>
 
-        {!loading && !error && resultList.length > 0 && (
+                {!loading && !error && filteredList.length > 0 && (
           <div style={cardsContainerStyle}>
-            {resultList.map((item, index) => (
+            {filteredList.map((item, index) => (
               <div key={item.refNo ?? index} style={itemCardStyle}>
                 <div style={itemAccentBarStyle} />
                 <div style={itemHeaderStyle}>
@@ -949,11 +1116,12 @@ function HomePage() {
                   <button
                     type="button"
                     style={deleteButtonStyle}
-                    onClick={() => handleDelete(item)}
+                    onClick={() => handleDeleteClick(item)}
                     disabled={deletingEmail === item.email}
                   >
-                    {deletingEmail === item.email ? "Deleting..." : "Delete"}
+                    Delete
                   </button>
+
                 </div>
               </div>
             ))}
@@ -972,34 +1140,95 @@ function HomePage() {
         </div>
       </footer>
 
-      {/* MODAL UPDATE DATA */}
-      {editingItem && (
-        <div style={modalBackdropStyle} onClick={closeEditModal}>
+            {/* MODAL ADD USER */}
+      {isAddModalOpen && (
+        <div style={modalBackdropStyle} onClick={closeAddModal}>
           <div
             style={modalCardStyle}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={modalHeaderStyle}>
               <div>
-                <div style={modalTitleStyle}>Update Data User</div>
+                <div style={modalTitleStyle}>Add New User</div>
                 <div style={sectionSubtitleStyle}>
-                  {editingItem.name} — {editingItem.email}
+                  Lengkapi data user baru untuk ditambahkan ke Tikus Dashboard.
                 </div>
               </div>
               <button
                 type="button"
                 style={modalCloseButtonStyle}
-                onClick={closeEditModal}
+                onClick={closeAddModal}
               >
                 ×
               </button>
             </div>
 
-                        <form onSubmit={handleSaveEdit}>
+            <form onSubmit={handleSaveAdd}>
               <div style={modalFormGridStyle}>
-                {/* ... field2 sebelumnya ... */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Nama</label>
+                  <input
+                    style={modalInputStyle}
+                    value={addForm.name}
+                    onChange={(e) =>
+                      handleAddChange("name", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Posisi</label>
+                  <input
+                    style={modalInputStyle}
+                    value={addForm.position}
+                    onChange={(e) =>
+                      handleAddChange("position", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Gender</label>
+                  <select
+                    style={modalInputStyle}
+                    value={addForm.gender}
+                    onChange={(e) =>
+                      handleAddChange("gender", e.target.value)
+                    }
+                    required
+                  >
+                    <option value="">Pilih</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Email</label>
+                  <input
+                    style={modalInputStyle}
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) =>
+                      handleAddChange("email", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
+                  <label style={modalLabelStyle}>Alamat</label>
+                  <input
+                    style={modalInputStyle}
+                    value={addForm.address}
+                    onChange={(e) =>
+                      handleAddChange("address", e.target.value)
+                    }
+                    required
+                  />
+                </div>
 
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Salary Amount</label>
@@ -1007,35 +1236,99 @@ function HomePage() {
                     style={modalInputStyle}
                     type="number"
                     step="0.01"
-                    value={editForm.salaryAmount}
+                    value={addForm.salaryAmount}
                     onChange={(e) =>
-                      handleEditChange("salaryAmount", e.target.value)
+                      handleAddChange("salaryAmount", e.target.value)
                     }
                   />
-                </div>      {/* tutup div field salary */}
-              </div>        {/* tutup div modalFormGridStyle */}
+                </div>
+              </div>
 
               <div style={modalFooterStyle}>
                 <button
                   type="button"
                   style={modalSecondaryButtonStyle}
-                  onClick={closeEditModal}
-                  disabled={isSaving}
+                  onClick={closeAddModal}
+                  disabled={isAdding}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   style={modalPrimaryButtonStyle}
-                  disabled={isSaving}
+                  disabled={isAdding}
                 >
-                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                  {isAdding ? "Menyimpan..." : "Tambah User"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+            {/* MODAL KONFIRMASI DELETE */}
+      {confirmDeleteItem && (
+        <div style={modalBackdropStyle} onClick={handleCancelDelete}>
+          <div
+            style={modalCardStyle}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={modalHeaderStyle}>
+              <div>
+                <div style={modalTitleStyle}>Konfirmasi Hapus</div>
+                <div style={sectionSubtitleStyle}>
+                  {confirmDeleteItem.name} — {confirmDeleteItem.email}
+                </div>
+              </div>
+              <button
+                type="button"
+                style={modalCloseButtonStyle}
+                onClick={handleCancelDelete}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={infoTextStyle}>
+              Data user ini akan dihapus dari Tikus Dashboard. Aksi ini tidak
+              bisa dibatalkan.
+            </p>
+
+            <div style={{ ...modalFooterStyle, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                style={modalSecondaryButtonStyle}
+                onClick={handleCancelDelete}
+                disabled={
+                  deletingEmail === (confirmDeleteItem && confirmDeleteItem.email)
+                }
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                style={{
+                  ...modalPrimaryButtonStyle,
+                  background:
+                    "linear-gradient(135deg, #ef4444 0%, #f97316 40%, #facc15 100%)",
+                  color: "#0b1120",
+                }}
+                onClick={handleConfirmDelete}
+                disabled={
+                  deletingEmail === (confirmDeleteItem && confirmDeleteItem.email)
+                }
+              >
+                {deletingEmail ===
+                (confirmDeleteItem && confirmDeleteItem.email)
+                  ? "Menghapus..."
+                  : "Ya, hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </main>
   );
 }
