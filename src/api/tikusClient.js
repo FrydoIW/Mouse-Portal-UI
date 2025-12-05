@@ -56,9 +56,7 @@ export async function loginTkd0200(payload) {
       if (data.message) {
         message = data.message;
       }
-    } catch (_) {
-      // abaikan kalau nggak ada JSON error
-    }
+    } catch (_) {}
     throw new Error(message);
   }
 
@@ -101,9 +99,7 @@ export async function resetTkd0300(payload) {
       if (data.message) {
         message = data.message;
       }
-    } catch (_) {
-      // abaikan kalau nggak ada JSON error
-    }
+    } catch (_) {}
     throw new Error(message);
   }
 
@@ -151,9 +147,7 @@ export async function updateTkd0500(payload) {
       if (data.remark || data.message) {
         message = data.remark || data.message;
       }
-    } catch (_) {
-      // kalau backend nggak kirim JSON error, abaikan
-    }
+    } catch (_) {}
     throw new Error(message);
   }
 
@@ -166,7 +160,7 @@ export async function updateTkd0500(payload) {
 // =======================
 // payload = { email, status: "00" }
 export async function deleteTkd0600(payload) {
-  const response = await fetch(`${BASE_URL}/updateData/tkd0600`, {
+  const response = await fetch(`${BASE_URL}/deleteData/tkd0600`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -181,9 +175,7 @@ export async function deleteTkd0600(payload) {
       if (data.remark || data.message) {
         message = data.remark || data.message;
       }
-    } catch (_) {
-      // backend gak ngirim JSON error, skip
-    }
+    } catch (_) {}
     throw new Error(message);
   }
 

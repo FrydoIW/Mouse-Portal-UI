@@ -6,7 +6,7 @@ function AuthLayout({ title, subtitle, children }) {
       <div className="auth-panel">
         <div className="auth-panel__header">
           <div>
-            <p className="auth-brand">Anywhere app.</p>
+            <p className="auth-brand">Login Page.</p>
             <h1>{title}</h1>
             <p className="auth-subtitle">{subtitle}</p>
           </div>

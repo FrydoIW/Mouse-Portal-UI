@@ -282,7 +282,7 @@ function HomePage() {
     try {
       const res = await deleteTkd0600({
         email: item.email,
-        status: "00",
+        status: "09",
       });
 
       if (res?.status && res.status !== "00") {

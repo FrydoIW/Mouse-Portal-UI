@@ -47,7 +47,7 @@ function LoginPage() {
   return (
     <AuthLayout
       title="Welcome back 👋"
-      subtitle="Masuk dulu untuk lanjut ke dashboard."
+      subtitle="Welcome To Tikus Management"
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-field">
@@ -83,11 +83,11 @@ function LoginPage() {
         </button>
 
         <p className="auth-switch">
-          Lupa password? <Link to="/forgot-password">Reset di sini</Link>
+          Forget Password ? <Link to="/forgot-password">Reset Password</Link>
         </p>
 
         <p className="auth-switch">
-          Belum punya akun? <Link to="/register">Daftar dulu</Link>
+          Don't Have Account ? <Link to="/register">Register</Link>
         </p>
       </form>
     </AuthLayout>
