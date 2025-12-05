@@ -1,13 +1,13 @@
 // src/api/tikusClient.js
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = "/api";
 
 // =======================
 // REGISTER TKD0100
 // =======================
 // payload = { name, address, gender, birthDate, position, email, passwordCredential }
 export async function registerTkd0100(payload) {
-  const response = await fetch(`${BASE_URL}/tikus/tkd0100`, {
+  const response = await fetch(`${BASE_URL}/register/tkd0100`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -111,7 +111,7 @@ export async function resetTkd0300(payload) {
 }
 
 export async function getAllDataTkd0400() {
-  const response = await fetch("http://localhost:8080/api/getAllData/tkd0400", {
+  const response = await fetch(`${BASE_URL}/getAllData/tkd0400`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
