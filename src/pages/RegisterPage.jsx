@@ -40,12 +40,8 @@ function RegisterPage() {
   try {
     await registerTkd0100(form);
 
-    // kalau mau langsung pindah tanpa pesan:
     navigate("/login");
 
-    // kalau mau kasih pesan dulu di halaman yang sama, bisa gini:
-    // setSuccess("Registrasi berhasil 🎉");
-    // setTimeout(() => navigate("/login"), 1200);
   } catch (err) {
     console.error(err);
     setError(err.message || "Gagal register");

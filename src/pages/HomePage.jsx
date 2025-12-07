@@ -17,6 +17,8 @@ function HomePage() {
     () => localStorage.getItem("tk-theme") || "dark"
   );
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
@@ -310,14 +312,13 @@ function HomePage() {
   };
 
   // ====== STYLING ======
-  const pageStyle = {
-    minHeight: "100vh",
-    padding: "2rem 3.5rem",
-    color: "var(--card-text-main)",
-    display: "flex",
-    flexDirection: "column",
-    gap: "2.5rem",
-  };
+ const pageStyle = {
+  minHeight: "100vh",
+  color: "var(--card-text-main)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "2.5rem",
+};
 
   const topBarStyle = {
     display: "flex",
@@ -937,7 +938,7 @@ function HomePage() {
 
   // ====== JSX RETURN ======
   return (
-    <main style={pageStyle}>
+    <main style={pageStyle} className="tk-page">
       {/* TOP BAR */}
       <header style={topBarStyle}>
         <div style={brandWrapperStyle}>
@@ -947,35 +948,98 @@ function HomePage() {
             <div style={brandSubtitleStyle}>Monitor Your Data Realtime</div>
           </div>
         </div>
-        <div style={topRightStyle}>
-          <button style={themeToggleStyle} onClick={toggleTheme}>
-            <div
-              style={{
-                ...themeDotStyle,
-                background:
-                  theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
-              }}
-            />
-            <span>{theme === "light" ? "Light" : "Dark"}</span>
-          </button>
+        {/* Desktop Menu */}
+<div style={topRightStyle} className="desktop-menu">
+  <button style={themeToggleStyle} onClick={toggleTheme}>
+    <div
+      style={{ 
+        ...themeDotStyle,
+        background:
+          theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
+      }}
+    />
+    <span>{theme === "light" ? "Light" : "Dark"}</span>
+  </button>
 
-          <div style={welcomeTextStyle}>
-            {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
-          </div>
-          <button style={logoutButtonStyle} onClick={handleLogout}>
-            <span>Logout</span>
-          </button>
-        </div>
+  <div style={welcomeTextStyle}>
+    {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
+  </div>
+  <button style={logoutButtonStyle} onClick={handleLogout}>
+    <span>Logout</span>
+  </button>
+</div>
+
+{/* Mobile Hamburger Menu */}
+<div className="mobile-menu-container">
+  <button 
+    className="hamburger-btn"
+    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+    aria-label="Menu"
+  >
+    <span className="hamburger-line"></span>
+    <span className="hamburger-line"></span>
+    <span className="hamburger-line"></span>
+  </button>
+  
+  <div className={`mobile-menu-dropdown ${isMobileMenuOpen ? 'show' : ''}`}>
+    <div className="mobile-welcome-text">
+      {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
+    </div>
+    
+    <button 
+      className="mobile-menu-item"
+      onClick={() => {
+        toggleTheme();
+        setIsMobileMenuOpen(false);
+      }}
+    >
+      <span>Theme: {theme === "light" ? "Light" : "Dark"}</span>
+      <div 
+        className="theme-dot-small"
+        style={{
+          background: theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
+        }}
+      />
+    </button>
+    
+    <button 
+      className="mobile-menu-item"
+      onClick={() => {
+        handleLogout();
+        setIsMobileMenuOpen(false);
+      }}
+      style={{ color: '#ef4444', justifyContent: 'center' }}
+    >
+      <span>Logout</span>
+    </button>
+  </div>
+</div>
+
+{/* Close dropdown ketika klik outside */}
+{isMobileMenuOpen && (
+  <div 
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 999,
+      background: 'transparent'
+    }}
+    onClick={() => setIsMobileMenuOpen(false)}
+  />
+)}
       </header>
 
       {/* HERO */}
-      <section style={heroSectionStyle}>
-        <div style={heroTextColStyle}>
+      <section style={heroSectionStyle} className="tk-page">
+        <div style={heroTextColStyle} className="tk-hero-text">
           <div>
             <div style={heroEyebrowStyle}>COMPANY PROFILES</div>
             <h1 style={heroTitleStyle}>
               Never stop{" "}
-              <span style={heroTitleAccentStyle}>gambling your.</span>
+              <span style={heroTitleAccentStyle}>KOPITIAM.</span>
             </h1>
           </div>
 
@@ -1006,7 +1070,7 @@ function HomePage() {
           </div>
         </div>
 
-        <div style={heroCardsColStyle}>
+        <div style={heroCardsColStyle} className="tk-hero-cards">
           <div style={heroCardsTrackStyle}>
             {resultList.slice(0, 3).map((item, index) => (
               <article key={item.refNo ?? index} style={heroPreviewCardStyle}>
@@ -1037,7 +1101,11 @@ function HomePage() {
       </section>
 
       {/* DATA SECTION */}
-      <section id="tkd0400-section" style={sectionWrapperStyle}>
+      <section
+        id="tkd0400-section"
+        style={sectionWrapperStyle}
+        className="tk-section"
+      >
         <div style={sectionHeaderRowStyle}>
           <div>
             <h2 style={sectionTitleStyle}>DATA ACTIVE USER</h2>
@@ -1107,7 +1175,10 @@ function HomePage() {
         </div>
 
         {!loading && !error && filteredList.length > 0 && (
-          <div style={cardsContainerStyle}>
+          <div
+            style={cardsContainerStyle}
+            className="tk-card-grid"
+          >
             {filteredList.map((item, index) => (
               <div key={item.refNo ?? index} style={itemCardStyle}>
                 <div style={itemAccentBarStyle} />

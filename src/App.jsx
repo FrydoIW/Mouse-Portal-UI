@@ -11,18 +11,15 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 function App() {
   return (
     <Routes>
-      {/* root ke login */}
       <Route path="/" element={<LoginPage />} />
 
-      {/* Auth pages */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Forgot password flow */}
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* Home setelah login sukses, diproteksi */}
+      
       <Route
         path="/home"
         element={

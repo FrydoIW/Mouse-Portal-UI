@@ -8,7 +8,6 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // email dikirim dari ForgotPasswordPage via navigate state
   const email = location.state?.email || "";
 
   const [newPassword, setNewPassword] = useState("");
@@ -18,7 +17,6 @@ function ResetPasswordPage() {
   const [info, setInfo] = useState("");
 
   useEffect(() => {
-    // kalau user langsung akses /reset-password tanpa email → balikin ke forgot
     if (!email) {
       navigate("/forgot-password", { replace: true });
     }
@@ -53,7 +51,6 @@ function ResetPasswordPage() {
       if (result.status === "00") {
         setInfo(result.remark || "Berhasil ganti password");
 
-        // setelah sukses, balik ke halaman login
         navigate("/login", { replace: true });
       } else {
         setError(result.remark || "Gagal ganti password");

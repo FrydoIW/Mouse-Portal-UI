@@ -28,7 +28,6 @@ function ForgotPasswordPage() {
       const result = await resetTkd0300(payload);
 
       if (result.status === "00") {
-        // Email benar → lanjut ke halaman ganti password
         setInfo(result.remark || "Email valid");
         navigate("/reset-password", {
           state: { email },

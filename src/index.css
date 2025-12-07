@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-/* RESET */
+/* ========== RESET ========== */
 *,
 *::before,
 *::after {
@@ -13,9 +13,16 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
 }
 
-/* DEFAULT (DARK) THEME VALUES */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+
 :root {
   --bg-body:
     radial-gradient(
@@ -34,11 +41,9 @@ body,
   --toggle-bg: rgba(15, 23, 42, 0.6);
   --toggle-text: #e5e7eb;
 
-  /* input / select */
   --input-bg: radial-gradient(circle at top left, #111827, #020617);
   --input-border: #4b5563;
 
-  /* aksen warna utama */
   --primary: #38bdf8;
   --primary-hover: #0ea5e9;
 
@@ -89,7 +94,7 @@ body,
   --card-text-main: #0f172a;
   --card-text-sub: #6b7280;
 
-  --toggle-bg: #111827;   /* pill tetap gelap biar kontras */
+  --toggle-bg: #111827;
   --toggle-text: #f9fafb;
 
   --input-bg: #f9fafb;
@@ -102,7 +107,7 @@ body,
   --select-option-text: #111827;
 }
 
-/* BODY GLOBAL */
+
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
@@ -110,11 +115,10 @@ body {
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center top;
-  background-attachment: fixed; /* efek parallax ringan */
+  background-attachment: fixed; 
   color: var(--card-text-main);
 }
 
-/* (opsional) hilangin outline biru jelek di button / input pas click */
 button,
 input,
 select,
@@ -125,3 +129,243 @@ textarea {
 button {
   background: none;
 }
+
+
+.tk-page {
+  width: 100%;
+  max-width: none;
+  padding-left: 10px;
+  padding-top: 10px;
+  padding-right: 10px;
+}
+
+
+.mobile-menu-container {
+  display: none;
+}
+
+
+@media (hover: none) and (pointer: coarse) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+
+
+@media (max-width: 640px) {
+  body {
+    background-attachment: scroll;
+  }
+
+  .tk-page {
+    padding: 0.75rem !important;
+    gap: 1.5rem !important;
+  }
+
+
+  .desktop-menu {
+    display: none !important;
+  }
+
+  .mobile-menu-container {
+    display: flex !important;
+    align-items: center;
+    margin-left: auto;
+    position: relative;
+    z-index: 1001;
+  }
+
+  .hamburger-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--toggle-bg);
+    border: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 12px;
+  }
+
+  .hamburger-line {
+    width: 20px;
+    height: 2px;
+    background: var(--toggle-text);
+    border-radius: 2px;
+    transition: 0.3s;
+  }
+
+  .mobile-menu-dropdown {
+    position: absolute;
+    top: 52px;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    z-index: 1002;
+    display: none;
+  }
+
+  .mobile-menu-dropdown.show {
+    display: block;
+  }
+
+  .mobile-welcome-text {
+    font-size: 13px;
+    color: var(--card-text-sub);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--card-border);
+    margin-bottom: 8px;
+    word-break: break-all;
+    text-align: center;
+  }
+
+  .mobile-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--card-text-main);
+    text-decoration: none;
+    font-size: 14px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .mobile-menu-item:hover {
+    background: rgba(148, 163, 184, 0.1);
+  }
+
+  .theme-dot-small {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+
+  .tk-hero-cards {
+    width: 100%;
+    margin-top: 1rem;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tk-hero-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tk-hero-cards > div {
+    display: flex !important;
+    width: max-content;
+    gap: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .tk-hero-cards article {
+    min-width: 160px !important;
+    width: 160px !important;
+    height: 190px !important;
+    flex-shrink: 0;
+  }
+
+
+  .tk-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 375px) {
+  .tk-hero-cards article {
+    min-width: 150px !important;
+    width: 150px !important;
+    height: 180px !important;
+  }
+}
+
+
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tk-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tk-card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (min-width: 641px) {
+  .mobile-menu-container {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .tk-hero-cards {
+    display: block !important;
+    flex: 1 1 auto !important;
+
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 1.25rem !important;      
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .tk-hero-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tk-hero-cards > div {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0.75rem !important;
+
+    width: max-content !important;
+    margin: 0 !important;
+    transform: none !important;        
+  }
+
+  .tk-hero-cards article {
+    flex: 0 0 160px !important;        
+    height: 190px !important;
+    margin: 0 !important;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 375px) {
+  .tk-hero-cards article {
+    flex-basis: 150px !important;
+    width: 150px !important;
+    height: 180px !important;
+  }
+}
+
+
