@@ -221,3 +221,146 @@
     align-items: flex-start;
   }
 }
+
+/* GOOGLE AUTHENTICATOR ACTIVATION */
+
+.ga-activation {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ga-activation__success {
+  color: #4ade80;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.ga-activation__error {
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+.ga-activation__qrWrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--card-border);
+  background: linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.12),
+    rgba(15, 23, 42, 0)
+  );
+}
+
+:root[data-theme="light"] .ga-activation__qrWrap {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.08), rgba(0, 0, 0, 0));
+}
+
+.ga-activation__qr {
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  border-radius: 0.8rem;
+  background: white;
+  padding: 0.5rem;
+}
+
+.ga-activation__hint {
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+:root[data-theme="light"] .ga-activation__hint {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.ga-activation__hintTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--card-text-main);
+  margin-bottom: 0.5rem;
+}
+
+.ga-activation__steps {
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--card-text-sub);
+  font-size: 0.88rem;
+}
+
+.ga-activation__meta {
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--card-text-sub);
+}
+
+/* OTP STEP */
+
+.otp-hint {
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+:root[data-theme="light"] .otp-hint {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.otp-hint__title {
+  font-size: 0.78rem;
+  color: var(--card-text-sub);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.otp-hint__value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--card-text-main);
+  margin-bottom: 0.4rem;
+}
+
+.otp-hint__desc {
+  font-size: 0.88rem;
+  color: var(--card-text-sub);
+  line-height: 1.4;
+}
+
+.otp-input {
+  text-align: center;
+  letter-spacing: 0.35em;
+  font-weight: 600;
+}
+
+.secondary-button {
+  width: 100%;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--card-text-main);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.secondary-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.secondary-button:active {
+  transform: translateY(0);
+}
+
+

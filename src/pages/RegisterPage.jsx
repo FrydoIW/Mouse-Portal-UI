@@ -23,6 +23,10 @@ function RegisterPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Jika backend mengembalikan QR untuk aktivasi Google Authenticator
+  const [qrBase64, setQrBase64] = useState(null);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -38,9 +42,18 @@ function RegisterPage() {
   setSuccess(null);
 
   try {
-    await registerTkd0100(form);
+    const res = await registerTkd0100(form);
 
-    navigate("/login");
+    // Default behavior tetap sama jika backend belum mengirim QR.
+    if (!res || !res.qrBase64) {
+      navigate("/login");
+      return;
+    }
+
+    // Show activation step (Google Authenticator)
+    setRegisteredEmail(form.email);
+    setQrBase64(res.qrBase64);
+    setSuccess(res.remark || "Registrasi berhasil. Silakan aktivasi Google Authenticator.");
 
   } catch (err) {
     console.error(err);
@@ -50,6 +63,67 @@ function RegisterPage() {
   }
 };
 
+    if (qrBase64) {
+    const qrSrc = qrBase64.startsWith("data:image")
+      ? qrBase64
+      : `data:image/png;base64,${qrBase64}`;
+
+    return (
+      <AuthLayout
+        title="Aktivasi Google Authenticator"
+        subtitle="Scan QR ini sebelum login pertama kali."
+      >
+        <div className="ga-activation">
+          {success && (
+            <p className="ga-activation__success" role="status">
+              {success}
+            </p>
+          )}
+
+          <div className="ga-activation__qrWrap">
+            <img
+              className="ga-activation__qr"
+              src={qrSrc}
+              alt="QR Google Authenticator"
+            />
+          </div>
+
+          <div className="ga-activation__hint">
+            <p className="ga-activation__hintTitle">Cara aktivasi:</p>
+            <ol className="ga-activation__steps">
+              <li>Buka aplikasi Google Authenticator.</li>
+              <li>Pilih <b>Tambah</b> → <b>Scan QR code</b>.</li>
+              <li>Scan QR di atas sampai akun muncul.</li>
+            </ol>
+
+            {registeredEmail ? (
+              <p className="ga-activation__meta">
+                Akun: <b>{registeredEmail}</b>
+              </p>
+            ) : null}
+          </div>
+
+          {error && (
+            <p className="ga-activation__error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => navigate("/login")}
+          >
+            Saya sudah scan, lanjut ke Login
+          </button>
+
+          <p className="auth-switch">
+            QR tidak bisa discan? Pastikan brightness cukup, atau refresh halaman.
+          </p>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout

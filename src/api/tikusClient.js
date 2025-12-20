@@ -50,13 +50,29 @@ export async function loginTkd0200(payload) {
   });
 
   if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
+    let message = "";
+
+    // coba ambil error dari backend (remark/message)
     try {
       const data = await response.json();
-      if (data.message) {
-        message = data.message;
+      message = data?.remark || data?.message || "";
+    } catch (_) {
+      // ignore kalau bukan JSON
+    }
+
+    // fallback message yang "ramah", jangan tampil status 400 ke user
+    if (!message) {
+      const isOtpFlow = payload?.verifyOtp === true;
+
+      if ([400, 401, 403].includes(response.status)) {
+        message = isOtpFlow
+          ? "OTP salah atau sudah kedaluwarsa."
+          : "Email atau password salah.";
+      } else {
+        message = "Terjadi kesalahan saat login. Coba lagi.";
       }
-    } catch (_) {}
+    }
+
     throw new Error(message);
   }
 

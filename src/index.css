@@ -41,9 +41,11 @@ body {
   --toggle-bg: rgba(15, 23, 42, 0.6);
   --toggle-text: #e5e7eb;
 
+
   --input-bg: radial-gradient(circle at top left, #111827, #020617);
   --input-border: #4b5563;
 
+  
   --primary: #38bdf8;
   --primary-hover: #0ea5e9;
 
@@ -118,6 +120,7 @@ body {
   background-attachment: fixed; 
   color: var(--card-text-main);
 }
+
 
 button,
 input,
