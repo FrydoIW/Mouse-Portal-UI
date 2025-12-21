@@ -36,14 +36,29 @@ function HomePage() {
 
   // EDIT STATE
   const [editingItem, setEditingItem] = useState(null);
+  const [editOriginal, setEditOriginal] = useState(null);
   const [editForm, setEditForm] = useState({
     name: "",
-    gender: "",
-    position: "",
     address: "",
+    gender: "",
+    birthDate: "",
+    position: "",
     email: "",
     salaryAmount: "",
+
+    joinWorkDt: "",
+    religion: "",
+    workingWeb: "",
+
+    foodAmount: "",
+    thr: "",
+    bonus: "",
+    ticketAmt: "",
+    ticketBuyDt: "",
+    noRekening: "",
+    lastSalaryIncreaseDt: "",
   });
+
   const [isSaving, setIsSaving] = useState(false);
 
   // DELETE STATE
@@ -53,19 +68,38 @@ function HomePage() {
   // GLOBAL ACTION MESSAGE
   const [actionMessage, setActionMessage] = useState(null); // { type, text }
 
+  const [lastTkd0100Request, setLastTkd0100Request] = useState(null);
+  const [lastTkd0100Response, setLastTkd0100Response] = useState(null);
+
+
   // SEARCH STATE
   const [searchQuery, setSearchQuery] = useState("");
 
   // ADD USER STATE
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: "",
-    gender: "",
-    position: "",
-    address: "",
-    email: "",
-    salaryAmount: "",
-  });
+  name: "",
+  address: "",
+  gender: "",
+  birthDate: "",
+  position: "",
+  email: "",
+  salaryAmount: "",
+
+  openPurpose: "02",
+  joinWorkDt: "",
+  religion: "",
+  workingWeb: "",
+
+  foodAmount: "",
+  thr: "",
+  bonus: "",
+  ticketAmt: "",
+  ticketBuyDt: "",
+  noRekening: "",
+  lastSalaryIncreaseDt: "",
+});
+
   const [isAdding, setIsAdding] = useState(false);
 
   // FETCH DATA
@@ -148,19 +182,42 @@ function HomePage() {
       maximumFractionDigits: 2,
     });
 
+  const toDateInput = (v) => {
+  if (!v) return "";
+  return String(v).slice(0, 10); // "YYYY-MM-DD"
+  };
+
   // ====== EDIT HANDLER ======
   const openEditModal = (item) => {
     setEditingItem(item);
+    setEditOriginal(item);
+
     setEditForm({
       name: item.name || "",
-      gender: item.gender || "",
-      position: item.position || "",
       address: item.address || "",
+      gender: item.gender || "",
+      birthDate: toDateInput(item.birthDate),
+      position: item.position || "",
       email: item.email || "",
       salaryAmount: item.trxAmt ?? 0,
+
+      joinWorkDt: toDateInput(item.joinWorkDt),
+      religion: item.religion || "",
+      workingWeb: item.workingWeb || "",
+
+      // TKD0400 biasanya: foodAmt, tiketAmt, tiketBuyDt
+      foodAmount: item.foodAmt ?? item.foodAmount ?? 0,
+      thr: item.thr ?? 0,
+      bonus: item.bonus ?? 0,
+      ticketAmt: item.tiketAmt ?? item.ticketAmt ?? 0,
+      ticketBuyDt: toDateInput(item.tiketBuyDt ?? item.ticketBuyDt),
+      noRekening: item.noRekening || "",
+      lastSalaryIncreaseDt: toDateInput(item.lastSalaryIncreaseDt),
     });
+
     setActionMessage(null);
   };
+
 
   const closeEditModal = () => {
     if (isSaving) return;
@@ -173,18 +230,62 @@ function HomePage() {
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
+    if (!editOriginal) return;
+
     setIsSaving(true);
     setActionMessage(null);
 
     try {
-      const payload = {
-        name: editForm.name,
-        gender: editForm.gender,
-        position: editForm.position,
-        address: editForm.address,
-        email: editForm.email,
-        salaryAmount: Number(editForm.salaryAmount) || 0,
+      const payload = { oldEmail: editOriginal.email };
+
+      const addIfChangedStr = (key, newVal, oldVal) => {
+        const nv = (newVal ?? "").toString().trim();
+        const ov = (oldVal ?? "").toString().trim();
+        if (nv !== "" && nv !== ov) payload[key] = nv;
       };
+
+      const addIfChangedNum = (key, newVal, oldVal) => {
+        if (newVal === "" || newVal === null || newVal === undefined) return;
+        const nv = Number(newVal);
+        const ov = Number(oldVal ?? 0);
+        if (!Number.isNaN(nv) && nv !== ov) payload[key] = nv;
+      };
+
+      const addIfChangedDate = (key, newVal, oldVal) => {
+        const nv = (newVal ?? "").toString().slice(0, 10);
+        const ov = toDateInput(oldVal);
+        if (nv !== "" && nv !== ov) payload[key] = nv;
+      };
+
+      addIfChangedStr("name", editForm.name, editOriginal.name);
+      addIfChangedStr("address", editForm.address, editOriginal.address);
+      addIfChangedStr("gender", editForm.gender, editOriginal.gender);
+      addIfChangedStr("position", editForm.position, editOriginal.position);
+      addIfChangedStr("email", editForm.email, editOriginal.email);
+          
+      // DTO: birthDt
+      addIfChangedDate("birthDt", editForm.birthDate, editOriginal.birthDt ?? editOriginal.birthDate);
+          
+      addIfChangedDate("joinWorkDt", editForm.joinWorkDt, editOriginal.joinWorkDt);
+      addIfChangedStr("religion", editForm.religion, editOriginal.religion);
+      addIfChangedStr("workingWeb", editForm.workingWeb, editOriginal.workingWeb);
+          
+      addIfChangedNum("salaryAmount", editForm.salaryAmount, editOriginal.trxAmt ?? editOriginal.salaryAmount);
+      addIfChangedNum("foodAmount", editForm.foodAmount, editOriginal.foodAmt ?? editOriginal.foodAmount);
+      addIfChangedNum("thr", editForm.thr, editOriginal.thr);
+      addIfChangedNum("bonus", editForm.bonus, editOriginal.bonus);
+          
+      addIfChangedNum("ticketAmt", editForm.ticketAmt, editOriginal.ticketAmt ?? editOriginal.tiketAmt);
+      addIfChangedDate("ticketBuyDt", editForm.ticketBuyDt, editOriginal.ticketBuyDt ?? editOriginal.tiketBuyDt);
+          
+      addIfChangedStr("noRekening", editForm.noRekening, editOriginal.noRekening);
+      addIfChangedDate("lastSalaryIncreaseDt", editForm.lastSalaryIncreaseDt, editOriginal.lastSalaryIncreaseDt);
+
+      // kalau user gak ubah apa-apa, jangan pukul backend
+      if (Object.keys(payload).length === 1) {
+        setActionMessage({ type: "error", text: "Tidak ada perubahan untuk disimpan." });
+        return;
+      }
 
       const res = await updateTkd0500(payload);
 
@@ -196,7 +297,9 @@ function HomePage() {
         type: "success",
         text: res?.remark || "Berhasil update data user.",
       });
+
       setEditingItem(null);
+      setEditOriginal(null);
       await reloadList();
     } catch (err) {
       setActionMessage({
@@ -206,21 +309,39 @@ function HomePage() {
     } finally {
       setIsSaving(false);
     }
-  };
+};
+
 
   // ====== ADD USER HANDLER ======
   const openAddModal = () => {
-    setAddForm({
-      name: "",
-      gender: "",
-      position: "",
-      address: "",
-      email: "",
-      salaryAmount: "",
-    });
-    setActionMessage(null);
-    setIsAddModalOpen(true);
-  };
+  setAddForm({
+    name: "",
+    address: "",
+    gender: "",
+    birthDate: "",
+    position: "",
+    email: "",
+    salaryAmount: "",
+
+    openPurpose: "02",
+    joinWorkDt: "",
+    religion: "",
+    workingWeb: "",
+
+    foodAmount: "",
+    thr: "",
+    bonus: "",
+    ticketAmt: "",
+    ticketBuyDt: "",
+    noRekening: "",
+    lastSalaryIncreaseDt: "",
+  });
+
+  setLastTkd0100Request(null);
+  setLastTkd0100Response(null);
+  setActionMessage(null);
+  setIsAddModalOpen(true);
+};
 
   const closeAddModal = () => {
     if (isAdding) return;
@@ -238,15 +359,41 @@ function HomePage() {
 
     try {
       const payload = {
-        name: addForm.name,
-        gender: addForm.gender,
-        position: addForm.position,
-        address: addForm.address,
-        email: addForm.email,
-        salaryAmount: Number(addForm.salaryAmount) || 0,
-      };
+      name: addForm.name,
+      address: addForm.address,
+      gender: addForm.gender,
+      birthDate: addForm.birthDate || null,
+      position: addForm.position,
+      email: addForm.email,
 
-      const res = await registerTkd0100(payload);
+      passwordCredential: null,
+      salaryAmount: Number(addForm.salaryAmount) || 0,
+
+      openPurpose: addForm.openPurpose || "02",
+      joinWorkDt: addForm.joinWorkDt || null,
+      religion: addForm.religion || null,
+      workingWeb: addForm.workingWeb || null,
+
+      foodAmount: Number(addForm.foodAmount) || 0,
+      thr: Number(addForm.thr) || 0,
+      bonus: Number(addForm.bonus) || 0,
+      ticketAmt: Number(addForm.ticketAmt) || 0,
+      ticketBuyDt: addForm.ticketBuyDt || null,
+      noRekening: addForm.noRekening || null,
+      lastSalaryIncreaseDt: addForm.lastSalaryIncreaseDt || null,
+    };
+
+    setLastTkd0100Request(payload);
+
+    const res = await registerTkd0100(payload);
+
+    // format response tetap kecil (status/remark/qrBase64)
+    setLastTkd0100Response({
+      status: res?.status ?? "00",
+      remark: res?.remark ?? "ALL DATA INSERTED",
+      qrBase64: res?.qrBase64 ?? null,
+    });
+
 
       if (res?.status && res.status !== "00") {
         throw new Error(res.remark || "Gagal menambahkan user");
@@ -1172,6 +1319,22 @@ function HomePage() {
               {actionMessage.text}
             </div>
           )}
+
+          {lastTkd0100Request && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.85rem 1rem",
+                  borderRadius: "0.8rem",
+                  border: "1px solid rgba(148,163,184,0.35)",
+                  background: "rgba(15,23,42,0.55)",
+                  fontSize: "0.8rem",
+                  overflow: "auto",
+                }}
+              >
+            </div>
+          )}
+
         </div>
 
         {!loading && !error && filteredList.length > 0 && (
@@ -1215,7 +1378,64 @@ function HomePage() {
                     <div style={labelStyle}>Email</div>
                     <div style={valueStyle}>{item.email}</div>
                   </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Birth</div>
+                    <div style={valueStyle}>{toDateInput(item.birthDate) || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Join</div>
+                    <div style={valueStyle}>{toDateInput(item.joinWorkDt) || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Religion</div>
+                    <div style={valueStyle}>{item.religion || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Web</div>
+                    <div style={valueStyle}>{item.workingWeb || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Uang Makan</div>
+                    <div style={valueStyle}>Rp {formatIdr(item.foodAmt ?? item.foodAmount)}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>THR</div>
+                    <div style={valueStyle}>Rp {formatIdr(item.thr)}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Bonus</div>
+                    <div style={valueStyle}>Rp {formatIdr(item.bonus)}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Harga Ticket</div>
+                    <div style={valueStyle}>Rp {formatIdr(item.tiketAmt ?? item.ticketAmt)}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Buy Ticket</div>
+                    <div style={valueStyle}>{toDateInput(item.tiketBuyDt ?? item.ticketBuyDt) || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Rekening</div>
+                    <div style={valueStyle}>{item.noRekening || "-"}</div>
+                  </div>
+
+                  <div style={fieldRowStyle}>
+                    <div style={labelStyle}>Naik Gaji</div>
+                    <div style={valueStyle}>{toDateInput(item.lastSalaryIncreaseDt) || "-"}</div>
+                  </div>
+
                 </div>
+
 
                 <div style={cardActionsRowStyle}>
                   <button
@@ -1277,38 +1497,35 @@ function HomePage() {
 
             <form onSubmit={handleSaveEdit}>
               <div style={modalFormGridStyle}>
+                {/* Nama */}
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Nama</label>
                   <input
                     style={modalInputStyle}
                     value={editForm.name}
-                    onChange={(e) =>
-                      handleEditChange("name", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("name", e.target.value)}
                     required
                   />
                 </div>
 
+                {/* Posisi */}
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Posisi</label>
                   <input
                     style={modalInputStyle}
                     value={editForm.position}
-                    onChange={(e) =>
-                      handleEditChange("position", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("position", e.target.value)}
                     required
                   />
                 </div>
 
+                {/* Gender */}
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Gender</label>
                   <select
                     style={modalInputStyle}
                     value={editForm.gender}
-                    onChange={(e) =>
-                      handleEditChange("gender", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("gender", e.target.value)}
                     required
                   >
                     <option value="">Pilih</option>
@@ -1317,31 +1534,30 @@ function HomePage() {
                   </select>
                 </div>
 
+                {/* Email */}
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Email</label>
                   <input
                     style={modalInputStyle}
                     type="email"
                     value={editForm.email}
-                    onChange={(e) =>
-                      handleEditChange("email", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("email", e.target.value)}
                     required
                   />
                 </div>
 
+                {/* Alamat */}
                 <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
                   <label style={modalLabelStyle}>Alamat</label>
                   <input
                     style={modalInputStyle}
                     value={editForm.address}
-                    onChange={(e) =>
-                      handleEditChange("address", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("address", e.target.value)}
                     required
                   />
                 </div>
 
+                {/* Salary Amount */}
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Salary Amount</label>
                   <input
@@ -1349,9 +1565,132 @@ function HomePage() {
                     type="number"
                     step="0.01"
                     value={editForm.salaryAmount}
-                    onChange={(e) =>
-                      handleEditChange("salaryAmount", e.target.value)
-                    }
+                    onChange={(e) => handleEditChange("salaryAmount", e.target.value)}
+                  />
+                </div>
+
+                {/* Birth Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Birth Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={editForm.birthDate}
+                    onChange={(e) => handleEditChange("birthDate", e.target.value)}
+                  />
+                </div>
+
+                {/* Join Work Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Join Work Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={editForm.joinWorkDt}
+                    onChange={(e) => handleEditChange("joinWorkDt", e.target.value)}
+                  />
+                </div>
+
+                {/* Religion */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Religion</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.religion}
+                    onChange={(e) => handleEditChange("religion", e.target.value)}
+                    placeholder="Islam / Kristen / Hindu..."
+                  />
+                </div>
+
+                {/* Working Web */}
+                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
+                  <label style={modalLabelStyle}>Working Web</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.workingWeb}
+                    onChange={(e) => handleEditChange("workingWeb", e.target.value)}
+                    placeholder="SUDUT TIMUR / https://..."
+                  />
+                </div>
+
+                {/* Food Amount */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Food Amount</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.foodAmount}
+                    onChange={(e) => handleEditChange("foodAmount", e.target.value)}
+                  />
+                </div>
+
+                {/* THR */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>THR</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.thr}
+                    onChange={(e) => handleEditChange("thr", e.target.value)}
+                  />
+                </div>
+
+                {/* Bonus */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Bonus</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.bonus}
+                    onChange={(e) => handleEditChange("bonus", e.target.value)}
+                  />
+                </div>
+
+                {/* Ticket Amount */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Ticket Amount</label>
+                  <input
+                    style={modalInputStyle}
+                    type="number"
+                    step="0.01"
+                    value={editForm.ticketAmt}
+                    onChange={(e) => handleEditChange("ticketAmt", e.target.value)}
+                  />
+                </div>
+
+                {/* Ticket Buy Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Ticket Buy Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={editForm.ticketBuyDt}
+                    onChange={(e) => handleEditChange("ticketBuyDt", e.target.value)}
+                  />
+                </div>
+
+                {/* No Rekening */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>No Rekening</label>
+                  <input
+                    style={modalInputStyle}
+                    value={editForm.noRekening}
+                    onChange={(e) => handleEditChange("noRekening", e.target.value)}
+                    placeholder="1234567890"
+                  />
+                </div>
+
+                {/* Last Salary Increase */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Last Salary Increase</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={editForm.lastSalaryIncreaseDt}
+                    onChange={(e) => handleEditChange("lastSalaryIncreaseDt", e.target.value)}
                   />
                 </div>
               </div>
