@@ -1185,12 +1185,12 @@ function HomePage() {
           <div>
             <div style={heroEyebrowStyle}>COMPANY PROFILES</div>
             <h1 style={heroTitleStyle}>
-              Never stop{" "}
-              <span style={heroTitleAccentStyle}>KOPITIAM.</span>
+              MONITORING{" "}
+              <span style={heroTitleAccentStyle}>MY COMPANY.</span>
             </h1>
           </div>
 
-          <p style={heroSubtitleStyle}>TIKUS TEAM OVERVIEW</p>
+          <p style={heroSubtitleStyle}>MY TEAM OVERVIEW</p>
 
           <div style={heroActionsStyle}>
             <button style={primaryCtaStyle} onClick={handleScrollToData}>
@@ -1202,7 +1202,7 @@ function HomePage() {
           <div style={heroStatsRowStyle}>
             <div style={heroStatCardStyle}>
               <div style={heroStatNumberStyle}>{resultList.length}</div>
-              <div style={heroStatLabelStyle}>Active User</div>
+              <div style={heroStatLabelStyle}>Anggota Aktif</div>
             </div>
             <div style={heroStatCardStyle}>
               <div style={heroStatNumberStyle}>Rp {formatIdr(totalTrx)}</div>
