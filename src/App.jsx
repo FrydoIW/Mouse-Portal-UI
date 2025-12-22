@@ -7,6 +7,9 @@ import HomePage from "./pages/HomePage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import BankInfoPage from "./pages/BankInfoPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+
 
 function App() {
   return (
@@ -28,6 +31,26 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/bank-info"
+        element={
+          <ProtectedRoute>
+            <BankInfoPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+
     </Routes>
   );
 }

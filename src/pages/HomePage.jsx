@@ -1196,7 +1196,21 @@ function HomePage() {
             <button style={primaryCtaStyle} onClick={handleScrollToData}>
               TEAM INFORMATION
             </button>
-            <button style={secondaryCtaStyle}>WAITING FOR UPDATE !!!</button>
+
+            <button
+              style={secondaryCtaStyle}
+              onClick={() => navigate("/bank-info")}
+            >
+              BANK INFO
+            </button>
+
+            <button
+              style={secondaryCtaStyle /* atau style tab lu */}
+              onClick={() => navigate("/dashboard")}
+            >
+              DASHBOARD
+            </button>
+
           </div>
 
           <div style={heroStatsRowStyle}>

@@ -198,3 +198,91 @@ export async function deleteTkd0600(payload) {
   const data = await response.json(); // { status, remark }
   return data;
 }
+
+// =======================
+// ATM APIs (ATM0100 - ATM0400)
+// =======================
+
+// ADD ATM0100
+// payload = { nomorRekening, bank, owner, amount }
+export async function addAtmAtm0100(payload) {
+  const response = await fetch(`${BASE_URL}/addAtm/atm0100`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.remark || data?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  return await response.json();
+}
+
+// GET ALL ATM0200
+// payload = { getAllData: "" }
+export async function getAllAtmAtm0200(payload = { getAllData: "" }) {
+  const response = await fetch(`${BASE_URL}/getAllAtmData/atm0200`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.remark || data?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  return await response.json();
+}
+
+// EDIT ATM0300
+// payload = { id, nomorRekening, bank, owner, amount }
+export async function editAtmAtm0300(payload) {
+  const response = await fetch(`${BASE_URL}/editAtmData/atm0300`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.remark || data?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  return await response.json();
+}
+
+// DELETE ATM0400
+// payload = { atmId: "4" }
+export async function deleteAtmAtm0400(payload) {
+  const response = await fetch(`${BASE_URL}/deleteAtm/atm0400`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.remark || data?.message || message;
+    } catch (_) {}
+    throw new Error(message);
+  }
+
+  return await response.json();
+}

@@ -56,7 +56,7 @@ function LoginPage() {
 
       if (result?.status === "00") {
         localStorage.setItem("authEmail", email);
-        navigate("/home");
+        navigate("/dashboard");
       } else {
         setError(result?.remark || "OTP tidak valid / verifikasi gagal");
         localStorage.removeItem("authEmail");
