@@ -15,6 +15,8 @@ const emptyForm = {
   amount: "",
 };
 
+const primaryCtaStyle = { padding: "0.75rem 1.4rem", borderRadius: "999px", border: "none", background: "linear-gradient(135deg, #3b82f6 0%, #22c55e 40%, #06b6d4 100%)", color: "#0b1120", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 18px 40px rgba(15, 23, 42, 0.65)", };
+
 function formatRupiah(val) {
   const n = Number(val ?? 0);
   if (Number.isNaN(n)) return "-";
@@ -443,7 +445,7 @@ export default function BankInfoPage() {
             <button style={pillBtn(false)} onClick={() => navigate("/home")}>
               TEAM INFORMATION
             </button>
-            <button style={pillBtn(true)} disabled>
+            <button style={{...pillBtn(true),...primaryCtaStyle,padding:'10px 16px'}} disabled>
               BANK INFO
             </button>
             <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>

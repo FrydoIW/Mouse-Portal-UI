@@ -2,10 +2,33 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllAtmAtm0200 } from "../api/tikusClient.js";
 
+const primaryCtaStyle = {
+  padding: "0.75rem 1.4rem",
+  borderRadius: "999px",
+  border: "none",
+  background: "linear-gradient(135deg, #3b82f6 0%, #22c55e 40%, #06b6d4 100%)",
+  color: "#0b1120",
+  fontSize: "0.9rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  boxShadow: "0 18px 40px rgba(15, 23, 42, 0.65)",
+};
+
 function formatRupiah(val) {
   const n = Number(val ?? 0);
   if (Number.isNaN(n)) return "-";
   return n.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatShort(val) {
+  const n = Number(val ?? 0);
+  if (Number.isNaN(n)) return "-";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
+  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return `${n.toFixed(0)}`;
 }
 
 function clamp(n, min, max) {
@@ -146,52 +169,326 @@ function DonutChart({ items, size = 220 }) {
   );
 }
 
-// ===== Sparkline (trend) =====
-function Sparkline({ values, width = 520, height = 140 }) {
-  const minV = Math.min(...values);
-  const maxV = Math.max(...values);
+// ===== Clear Chart: Top 5 Balance Bar Chart (SVG) =====
+function Top5BalanceChart({ items, height = 240 }) {
+  const data = (items || []).slice(0, 5);
+  const W = 920; // viewBox width (responsive)
+  const H = height;
+
+  if (!data.length) {
+    return <div style={{ opacity: 0.75, marginTop: 10 }}>Belum ada data.</div>;
+  }
+
+  const maxV = Math.max(...data.map((x) => Number(x.value ?? 0))) || 1;
+
+  const pad = { top: 22, right: 220, bottom: 34, left: 240 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+
+  const rowH = innerH / data.length;
+  const barH = Math.min(18, rowH * 0.58);
+
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
+    t,
+    x: pad.left + innerW * t,
+    v: maxV * t,
+  }));
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block" }}>
+        <defs>
+          <linearGradient id="barFill" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="rgba(0, 200, 255, 0.55)" />
+            <stop offset="100%" stopColor="rgba(0, 200, 255, 0.25)" />
+          </linearGradient>
+        </defs>
+
+        {/* vertical grid + tick labels */}
+        {ticks.map((tk) => (
+          <g key={tk.t}>
+            <line x1={tk.x} y1={pad.top} x2={tk.x} y2={pad.top + innerH} stroke="rgba(148,163,184,0.16)" />
+            <text
+              x={tk.x}
+              y={pad.top + innerH + 22}
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.62)"
+              fontSize="12"
+              fontWeight="700"
+            >
+              {formatShort(tk.v)}
+            </text>
+          </g>
+        ))}
+
+        {/* bars + labels */}
+        {data.map((d, i) => {
+          const v = Number(d.value ?? 0);
+          const w = (v / maxV) * innerW;
+          const cy = pad.top + rowH * i + rowH / 2;
+          const y = cy - barH / 2;
+
+          return (
+            <g key={d.id ?? `${d.label}-${i}`}>
+              {/* left label */}
+              <text
+                x={pad.left - 10}
+                y={cy + 4}
+                textAnchor="end"
+                fill="rgba(255,255,255,0.9)"
+                fontSize="13"
+                fontWeight="800"
+              >
+                {`${i + 1}. ${d.label}`}
+              </text>
+
+              {/* bar background */}
+              <rect
+                x={pad.left}
+                y={y}
+                width={innerW}
+                height={barH}
+                rx="999"
+                fill="rgba(255,255,255,0.06)"
+                stroke="rgba(148,163,184,0.14)"
+              />
+
+              {/* bar */}
+              <rect
+                x={pad.left}
+                y={y}
+                width={clamp(w, 0, innerW)}
+                height={barH}
+                rx="999"
+                fill="url(#barFill)"
+                stroke="rgba(0, 200, 255, 0.25)"
+              />
+
+              {/* value (full, jelas) */}
+              <text
+                x={pad.left + innerW + 10}
+                y={cy + 4}
+                textAnchor="start"
+                fill="rgba(255,255,255,0.9)"
+                fontSize="13"
+                fontWeight="900"
+              >
+                Rp {formatRupiah(v)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/** ===== NEW: Line Chart (SVG) ===== */
+function BalanceLineChart({ points, height = 260 }) {
+  const data = (points || []).slice(0, 8);
+  const W = 920;
+  const H = height;
+
+  if (!data.length) return <div style={{ opacity: 0.75, marginTop: 10 }}>Belum ada data.</div>;
+
+  const maxV = Math.max(...data.map((x) => Number(x.value ?? 0))) || 1;
+  const minV = Math.min(...data.map((x) => Number(x.value ?? 0))) || 0;
   const range = maxV - minV || 1;
 
-  const pad = 12;
-  const innerW = width - pad * 2;
-  const innerH = height - pad * 2;
+  const pad = { top: 22, right: 24, bottom: 54, left: 70 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
 
-  const pts = values.map((v, i) => {
-    const x = pad + (i / (values.length - 1 || 1)) * innerW;
-    const y = pad + (1 - (v - minV) / range) * innerH;
-    return { x, y };
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
+    t,
+    v: minV + range * (1 - t),
+    y: pad.top + innerH * t,
+  }));
+
+  const pts = data.map((d, i) => {
+    const x = pad.left + (i / (data.length - 1 || 1)) * innerW;
+    const y = pad.top + (1 - (Number(d.value ?? 0) - minV) / range) * innerH;
+    return { ...d, x, y, i };
   });
 
   const dLine = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const dArea = `${dLine} L ${pad + innerW} ${pad + innerH} L ${pad} ${pad + innerH} Z`;
 
   return (
-    <svg width={width} height={height} style={{ display: "block" }}>
-      <defs>
-        <linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgba(0, 200, 255, 0.35)" />
-          <stop offset="100%" stopColor="rgba(0, 200, 255, 0.0)" />
-        </linearGradient>
-      </defs>
+    <div style={{ marginTop: 10 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block" }}>
+        {/* grid + y ticks */}
+        {yTicks.map((tk) => (
+          <g key={tk.t}>
+            <line x1={pad.left} y1={tk.y} x2={pad.left + innerW} y2={tk.y} stroke="rgba(148,163,184,0.16)" />
+            <text
+              x={pad.left - 10}
+              y={tk.y + 4}
+              textAnchor="end"
+              fill="rgba(255,255,255,0.62)"
+              fontSize="12"
+              fontWeight="700"
+            >
+              {formatShort(tk.v)}
+            </text>
+          </g>
+        ))}
 
-      {[0.25, 0.5, 0.75].map((t) => (
-        <line
-          key={t}
-          x1={pad}
-          y1={pad + innerH * t}
-          x2={pad + innerW}
-          y2={pad + innerH * t}
-          stroke="rgba(148,163,184,0.18)"
-        />
-      ))}
+        {/* line */}
+        <path d={dLine} fill="none" stroke="rgba(0, 200, 255, 0.88)" strokeWidth="3" />
 
-      <path d={dArea} fill="url(#sparkFill)" />
-      <path d={dLine} fill="none" stroke="rgba(0, 200, 255, 0.85)" strokeWidth="3" />
+        {/* points + value labels */}
+        {pts.map((p) => (
+          <g key={p.key ?? `${p.label}-${p.i}`}>
+            <circle cx={p.x} cy={p.y} r="5.2" fill="rgba(0, 200, 255, 0.95)">
+              <title>
+                {p.label} • Rp {formatRupiah(p.value)}
+              </title>
+            </circle>
+            <text
+              x={p.x}
+              y={p.y - 10}
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.85)"
+              fontSize="12"
+              fontWeight="800"
+            >
+              {formatShort(p.value)}
+            </text>
+          </g>
+        ))}
 
-      {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="4.2" fill="rgba(0, 200, 255, 0.9)" />
-      ))}
-    </svg>
+        {/* x labels (#rank) */}
+        {pts.map((p) => (
+          <g key={`x-${p.i}`}>
+            <text
+              x={p.x}
+              y={pad.top + innerH + 26}
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.72)"
+              fontSize="12"
+              fontWeight="800"
+            >
+              #{p.i + 1}
+            </text>
+          </g>
+        ))}
+
+        {/* legend mapping (bottom) */}
+        <text x={pad.left} y={H - 10} textAnchor="start" fill="rgba(255,255,255,0.62)" fontSize="12" fontWeight="700">
+          #1..#5 = Top balance (lihat list TOP 5 DETAIL)
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/** ===== NEW: Area Chart (SVG) - cumulative top balances ===== */
+function CumulativeAreaChart({ points, height = 260 }) {
+  const base = (points || []).slice(0, 8);
+  if (!base.length) return <div style={{ opacity: 0.75, marginTop: 10 }}>Belum ada data.</div>;
+
+  // cumulative series (descending order)
+  const data = base.map((d, i) => {
+    const prev = i === 0 ? 0 : base.slice(0, i).reduce((a, x) => a + Number(x.value ?? 0), 0);
+    return { ...d, cum: prev + Number(d.value ?? 0), i };
+  });
+
+  const W = 920;
+  const H = height;
+
+  const maxV = Math.max(...data.map((x) => Number(x.cum ?? 0))) || 1;
+
+  const pad = { top: 22, right: 24, bottom: 54, left: 70 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
+    t,
+    v: maxV * (1 - t),
+    y: pad.top + innerH * t,
+  }));
+
+  const pts = data.map((d, i) => {
+    const x = pad.left + (i / (data.length - 1 || 1)) * innerW;
+    const y = pad.top + (1 - Number(d.cum ?? 0) / maxV) * innerH;
+    return { ...d, x, y };
+  });
+
+  const dLine = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const dArea = `${dLine} L ${pad.left + innerW} ${pad.top + innerH} L ${pad.left} ${pad.top + innerH} Z`;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block" }}>
+        <defs>
+          <linearGradient id="areaFill2" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="rgba(34, 197, 94, 0.28)" />
+            <stop offset="100%" stopColor="rgba(34, 197, 94, 0.02)" />
+          </linearGradient>
+        </defs>
+
+        {/* grid + y ticks */}
+        {yTicks.map((tk) => (
+          <g key={tk.t}>
+            <line x1={pad.left} y1={tk.y} x2={pad.left + innerW} y2={tk.y} stroke="rgba(148,163,184,0.16)" />
+            <text
+              x={pad.left - 10}
+              y={tk.y + 4}
+              textAnchor="end"
+              fill="rgba(255,255,255,0.62)"
+              fontSize="12"
+              fontWeight="700"
+            >
+              {formatShort(tk.v)}
+            </text>
+          </g>
+        ))}
+
+        {/* area + line */}
+        <path d={dArea} fill="url(#areaFill2)" />
+        <path d={dLine} fill="none" stroke="rgba(34, 197, 94, 0.9)" strokeWidth="3" />
+
+        {/* points */}
+        {pts.map((p) => (
+          <g key={`cum-${p.i}`}>
+            <circle cx={p.x} cy={p.y} r="5.0" fill="rgba(34, 197, 94, 0.95)">
+              <title>
+                Cum #{p.i + 1} • Rp {formatRupiah(p.cum)}
+              </title>
+            </circle>
+            <text
+              x={p.x}
+              y={p.y - 10}
+              textAnchor="middle"
+              fill="rgba(255,255,255,0.85)"
+              fontSize="12"
+              fontWeight="800"
+            >
+              {formatShort(p.cum)}
+            </text>
+          </g>
+        ))}
+
+        {/* x labels */}
+        {pts.map((p) => (
+          <text
+            key={`cx-${p.i}`}
+            x={p.x}
+            y={pad.top + innerH + 26}
+            textAnchor="middle"
+            fill="rgba(255,255,255,0.72)"
+            fontSize="12"
+            fontWeight="800"
+          >
+            #{p.i + 1}
+          </text>
+        ))}
+
+        <text x={pad.left} y={H - 10} textAnchor="start" fill="rgba(255,255,255,0.62)" fontSize="12" fontWeight="700">
+          Cumulative (akumulasi) Top balance
+        </text>
+      </svg>
+    </div>
   );
 }
 
@@ -293,18 +590,14 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [rows]);
 
-  const sparkValues = useMemo(() => {
-    const base = top5.map((x) => x.value);
-    if (base.length === 0) return [0, 0, 0, 0, 0];
-
-    const points = [];
-    for (let i = 0; i < 12; i++) {
-      const idx = i % base.length;
-      const v = base[idx];
-      const wave = Math.sin(i / 1.6) * (v * 0.06);
-      points.push(Math.max(0, v + wave));
-    }
-    return points;
+  // NEW: series for line & area (based on top5)
+  const lineSeries = useMemo(() => {
+    return (top5 || []).map((x, idx) => ({
+      key: x.id ?? `${idx}`,
+      label: x.label,
+      value: Number(x.value ?? 0),
+      i: idx,
+    }));
   }, [top5]);
 
   // ===== styles =====
@@ -359,15 +652,19 @@ export default function DashboardPage() {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background:
-      "radial-gradient(circle at 30% 0, #e0f2fe 0, #2563eb 40%, #0b1120 100%)",
+    background: "radial-gradient(circle at 30% 0, #e0f2fe 0, #2563eb 40%, #0b1120 100%)",
     color: "#f9fafb",
     fontSize: "1.15rem",
     fontWeight: 700,
     letterSpacing: "0.06em",
     boxShadow: "0 12px 30px rgba(15, 23, 42, 0.6)",
   };
-  const brandTitleStyle = { fontSize: "1.15rem", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" };
+  const brandTitleStyle = {
+    fontSize: "1.15rem",
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+  };
   const brandSubtitleStyle = { fontSize: "0.8rem", color: "var(--card-text-sub)" };
   const topRightStyle = { display: "flex", alignItems: "center", gap: "1rem" };
   const welcomeTextStyle = { fontSize: "0.9rem", color: "var(--card-text-sub)" };
@@ -407,7 +704,6 @@ export default function DashboardPage() {
 
   return (
     <div className="tk-page" style={pageWrap}>
-      {/* keyframes for skeleton */}
       <style>{`
         @keyframes tkShimmer {
           0% { background-position: 100% 0; }
@@ -456,9 +752,7 @@ export default function DashboardPage() {
           </button>
 
           <div className={`mobile-menu-dropdown ${isMobileMenuOpen ? "show" : ""}`}>
-            <div className="mobile-welcome-text">
-              {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
-            </div>
+            <div className="mobile-welcome-text">{email ? `Hi, ${email}` : "Hi, selamat datang 👋"}</div>
 
             <button
               className="mobile-menu-item"
@@ -512,14 +806,18 @@ export default function DashboardPage() {
           <h1 style={{ fontSize: 40, margin: "6px 0 0 0" }}>
             DASH<span style={{ color: "#42c2ff" }}>BOARD</span>.
           </h1>
-          <div style={{ color: "var(--card-text-sub)", fontSize: 13.5 }}>
-            Ringkasan data (Top 5 saldo ATM + visual chart)
-          </div>
+          <div style={{ color: "var(--card-text-sub)", fontSize: 13.5 }}>Summary Data</div>
 
           <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button style={pillBtn(false)} onClick={() => navigate("/home")}>TEAM INFORMATION</button>
-            <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>BANK INFO</button>
-            <button style={pillBtn(true)} disabled>DASHBOARD</button>
+            <button style={pillBtn(false)} onClick={() => navigate("/home")}>
+              TEAM INFORMATION
+            </button>
+            <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>
+              BANK INFO
+            </button>
+            <button style={{ ...pillBtn(true), ...primaryCtaStyle, padding: "10px 16px" }} disabled>
+              DASHBOARD
+            </button>
           </div>
         </div>
 
@@ -575,48 +873,89 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* MAIN CHART AREA */}
+      {/* =========================
+          BARIS 1: DONUT + TOP BALANCE
+         ========================= */}
       {isInitialLoading ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 12, marginTop: 14 }}>
-          <div style={card}>
-            <Skeleton h={14} w="45%" r={999} />
-            <div style={{ height: 12 }} />
-            <Skeleton h={140} w="100%" r={16} />
-            <div style={{ height: 10 }} />
-            <Skeleton h={12} w="70%" r={999} />
-          </div>
-
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, marginTop: 14 }}>
           <div style={card}>
             <Skeleton h={14} w="55%" r={999} />
             <div style={{ height: 12 }} />
             <Skeleton h={220} w="100%" r={16} />
           </div>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 12, marginTop: 14 }}>
-          <div style={card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-              <div style={sectionTitle}>BALANCE TREND (sparkline)</div>
-              <div style={subInfo}>Last refresh: {lastRefresh || "-"}</div>
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <Sparkline values={sparkValues} />
-            </div>
-            <div style={{ marginTop: 8, ...subInfo }}>
-              *Trend dibuat dari pola Top 5 (API belum ada histori transaksi).
-            </div>
-          </div>
 
           <div style={card}>
-            <div style={sectionTitle}>BALANCE BY BANK (donut)</div>
+            <Skeleton h={14} w="45%" r={999} />
+            <div style={{ height: 12 }} />
+            <Skeleton h={240} w="100%" r={16} />
+            <div style={{ height: 10 }} />
+            <Skeleton h={12} w="70%" r={999} />
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, marginTop: 14 }}>
+          <div style={card}>
+            <div style={sectionTitle}>BALANCE BY BANK</div>
             <div style={{ marginTop: 10 }}>
               <DonutChart items={donutData.length ? donutData : [{ label: "N/A", value: 0 }]} />
             </div>
           </div>
+
+          <div style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <div style={sectionTitle}>TOP 5 BALANCE CHART</div>
+              <div style={subInfo}>Last refresh: {lastRefresh || "-"}</div>
+            </div>
+
+            {/* ✅ chart yang datanya jelas */}
+            <Top5BalanceChart items={top5} height={240} />
+
+            <div style={{ marginTop: 8, ...subInfo }}>*Real Time.</div>
+          </div>
         </div>
       )}
 
-      {/* TOP 5 + DETAIL */}
+      {/* =========================
+          BARIS 2 (NEW): LINE + AREA
+         ========================= */}
+      {isInitialLoading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+          <div style={card}>
+            <Skeleton h={14} w="45%" r={999} />
+            <div style={{ height: 12 }} />
+            <Skeleton h={260} w="100%" r={16} />
+          </div>
+          <div style={card}>
+            <Skeleton h={14} w="45%" r={999} />
+            <div style={{ height: 12 }} />
+            <Skeleton h={260} w="100%" r={16} />
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+          <div style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <div style={sectionTitle}>TOP BALANCE (LINE)</div>
+              <div style={subInfo}>Based on Top 5</div>
+            </div>
+            <BalanceLineChart points={lineSeries} height={260} />
+            <div style={{ marginTop: 8, ...subInfo }}>* Line Chart Overview *</div>
+          </div>
+
+          <div style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <div style={sectionTitle}>CUMULATIVE (AREA)</div>
+              <div style={subInfo}>Akumulasi Top 5</div>
+            </div>
+            <CumulativeAreaChart points={lineSeries} height={260} />
+            <div style={{ marginTop: 8, ...subInfo }}>* Area Top 5 *</div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================
+          BARIS 3: TOP 5 RANK + DETAIL (existing)
+         ========================= */}
       {isInitialLoading ? (
         <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 12, marginTop: 14 }}>
           <div style={card}>
@@ -740,12 +1079,12 @@ export default function DashboardPage() {
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontWeight: 900 }}>#{idx + 1} {x.label}</div>
+                      <div style={{ fontWeight: 900 }}>
+                        #{idx + 1} {x.label}
+                      </div>
                       <div style={{ fontWeight: 900, color: "#42c2ff" }}>Rp {formatRupiah(x.value)}</div>
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
-                      Rekening: {x.nomorRekening}
-                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>Rekening: {x.nomorRekening}</div>
                   </div>
                 ))
               )}

@@ -1537,6 +1537,7 @@ function HomePage() {
                 <div style={modalFieldStyle}>
                   <label style={modalLabelStyle}>Gender</label>
                   <select
+                    className="tk-select"
                     style={modalInputStyle}
                     value={editForm.gender}
                     onChange={(e) => handleEditChange("gender", e.target.value)}
@@ -1833,6 +1834,51 @@ function HomePage() {
                     }
                   />
                 </div>
+
+                {/* Birth Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Birth Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={addForm.birthDate}
+                    onChange={(e) => handleAddChange("birthDate", e.target.value)}
+                  />
+                </div>
+
+                {/* Join Work Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Join Work Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={addForm.joinWorkDt}
+                    onChange={(e) => handleAddChange("joinWorkDt", e.target.value)}
+                  />
+                </div>
+
+                {/* Ticket Buy Date */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Ticket Buy Date</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={addForm.ticketBuyDt}
+                    onChange={(e) => handleAddChange("ticketBuyDt", e.target.value)}
+                  />
+                </div>
+
+                {/* Last Salary Increase */}
+                <div style={modalFieldStyle}>
+                  <label style={modalLabelStyle}>Last Salary Increase</label>
+                  <input
+                    style={modalInputStyle}
+                    type="date"
+                    value={addForm.lastSalaryIncreaseDt}
+                    onChange={(e) => handleAddChange("lastSalaryIncreaseDt", e.target.value)}
+                  />
+                </div>
+
               </div>
 
               <div style={modalFooterStyle}>

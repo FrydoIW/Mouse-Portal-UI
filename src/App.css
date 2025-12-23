@@ -196,17 +196,18 @@
 
 /* KALENDER: beda di dark/light */
 
-:root[data-theme="dark"] .input-box input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1); /* hitam -> putih */
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
   opacity: 0.9;
   cursor: pointer;
 }
 
-:root[data-theme="light"] .input-box input[type="date"]::-webkit-calendar-picker-indicator {
+:root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: none;
   opacity: 0.8;
   cursor: pointer;
 }
+
 
 /* RESPONSIVE */
 
@@ -362,5 +363,28 @@
 .secondary-button:active {
   transform: translateY(0);
 }
+
+/* === FIX dropdown option biar kebaca di modal (HomePage) === */
+.tk-select,
+.tk-select option {
+  font-family: inherit;
+}
+
+.tk-select {
+  color: var(--card-text-main);
+  background: var(--input-bg);
+}
+
+/* Option list (yang muncul pas dropdown kebuka) */
+:root[data-theme="dark"] .tk-select option {
+  background: #0b1220;
+  color: rgba(255,255,255,0.92);
+}
+
+:root[data-theme="light"] .tk-select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
 
 
