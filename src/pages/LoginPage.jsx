@@ -10,7 +10,6 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // STEP LOGIN: credentials -> otp
   const [step, setStep] = useState("CRED"); // "CRED" | "OTP"
   const [otp, setOtp] = useState("");
 
@@ -23,7 +22,6 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      // Biar gak ada "kebawa login lama"
       localStorage.removeItem("authEmail");
 
       // ======================
@@ -38,7 +36,6 @@ function LoginPage() {
           return;
         }
 
-        // WAJIB OTP: apapun response sukses (mau echo, mau status 00) -> lanjut OTP
         setOtp("");
         setStep("OTP");
         return;
@@ -98,7 +95,6 @@ function LoginPage() {
                 required
                 value={otp}
                 onChange={(e) => {
-                  // digits only, max 6
                   const v = e.target.value.replace(/\D/g, "").slice(0, 6);
                   setOtp(v);
                 }}
@@ -177,7 +173,7 @@ function LoginPage() {
   }
 
 
-  // UI Step 1: Email + Password (existing, cuma sedikit adapt)
+  // UI Step 1: Email + Password
   return (
     <AuthLayout title="Welcome back 👋" subtitle="Welcome To Tikus Management">
       <form className="auth-form" onSubmit={handleSubmit}>

@@ -5,7 +5,6 @@ import AuthLayout from "../layouts/AuthLayout";
 import { registerTkd0100 } from "../api/tikusClient";
 
 function RegisterPage() {
-  // state form
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -18,12 +17,10 @@ function RegisterPage() {
 
   const navigate = useNavigate();
 
-  // state untuk status request
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Jika backend mengembalikan QR untuk aktivasi Google Authenticator
   const [qrBase64, setQrBase64] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState("");
 
@@ -44,13 +41,11 @@ function RegisterPage() {
   try {
     const res = await registerTkd0100(form);
 
-    // Default behavior tetap sama jika backend belum mengirim QR.
     if (!res || !res.qrBase64) {
       navigate("/login");
       return;
     }
 
-    // Show activation step (Google Authenticator)
     setRegisteredEmail(form.email);
     setQrBase64(res.qrBase64);
     setSuccess(res.remark || "Registrasi berhasil. Silakan aktivasi Google Authenticator.");

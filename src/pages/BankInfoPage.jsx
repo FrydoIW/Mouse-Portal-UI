@@ -26,7 +26,6 @@ function formatRupiah(val) {
 export default function BankInfoPage() {
   const navigate = useNavigate();
 
-  // ===== header user/theme (samain sama Home) =====
   const email = localStorage.getItem("authEmail") || "";
 
   const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
@@ -41,25 +40,22 @@ export default function BankInfoPage() {
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
   const handleLogout = () => {
-    // pakai key yg memang ada di app lu
     localStorage.removeItem("authEmail");
     localStorage.removeItem("token");
     localStorage.removeItem("accessToken");
     localStorage.removeItem("isLogin");
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("user");
-    navigate("/login"); // ganti kalau login route lu bukan /login
+    navigate("/login");
   };
 
-  // ===== data state =====
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
 
-  // modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [mode, setMode] = useState("add"); // add | edit
+  const [mode, setMode] = useState("add");
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteBusyId, setDeleteBusyId] = useState(null);
@@ -180,7 +176,6 @@ export default function BankInfoPage() {
     }
   };
 
-  // ===== styles (samain vibe home) =====
   const pageWrap = { width: "100%", maxWidth: 1400, margin: "0 auto", padding: 14 };
   const heroRow = { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 };
   const titleBlock = { display: "flex", flexDirection: "column", gap: 6 };
@@ -245,7 +240,6 @@ export default function BankInfoPage() {
   const th = { textAlign: "left", padding: "12px 10px", borderBottom: "1px solid var(--card-border)", opacity: 0.9 };
   const td = { padding: "12px 10px", borderBottom: "1px solid var(--card-border)" };
 
-  // ===== topbar styles (lebih dekat HomePage) =====
   const topBarStyle = {
     display: "flex",
     alignItems: "center",
@@ -336,7 +330,7 @@ export default function BankInfoPage() {
 
   return (
     <div className="tk-page" style={pageWrap}>
-      {/* TOP BAR (konsisten kayak Home) */}
+      {/* TOP BAR */}
       <header style={topBarStyle}>
         <div style={brandWrapperStyle}>
           <div style={logoCircleStyle}>TK</div>
@@ -366,7 +360,7 @@ export default function BankInfoPage() {
           </button>
         </div>
 
-        {/* MOBILE MENU (CSS udah ada di index.css) */}
+        {/* MOBILE MENU*/}
         <div className="mobile-menu-container">
           <button
             className="hamburger-btn"

@@ -54,7 +54,7 @@ function Skeleton({ h = 16, w = "100%", r = 12, style = {} }) {
   );
 }
 
-// ===== Donut Chart (pure SVG) =====
+// ===== Donut Chart =====
 function DonutChart({ items, size = 220 }) {
   const total = items.reduce((a, x) => a + (Number(x.value) || 0), 0) || 1;
 
@@ -169,10 +169,10 @@ function DonutChart({ items, size = 220 }) {
   );
 }
 
-// ===== Clear Chart: Top 5 Balance Bar Chart (SVG) =====
+// ===== Clear Chart: Top 5 Balance Bar Chart =====
 function Top5BalanceChart({ items, height = 240 }) {
   const data = (items || []).slice(0, 5);
-  const W = 920; // viewBox width (responsive)
+  const W = 920; 
   const H = height;
 
   if (!data.length) {
@@ -264,7 +264,7 @@ function Top5BalanceChart({ items, height = 240 }) {
                 stroke="rgba(0, 200, 255, 0.25)"
               />
 
-              {/* value (full, jelas) */}
+              {/* value */}
               <text
                 x={pad.left + innerW + 10}
                 y={cy + 4}
@@ -283,7 +283,7 @@ function Top5BalanceChart({ items, height = 240 }) {
   );
 }
 
-/** ===== NEW: Line Chart (SVG) ===== */
+/** ===== NEW: Line Chart  ===== */
 function BalanceLineChart({ points, height = 260 }) {
   const data = (points || []).slice(0, 8);
   const W = 920;
@@ -382,7 +382,7 @@ function BalanceLineChart({ points, height = 260 }) {
   );
 }
 
-/** ===== NEW: Area Chart (SVG) - cumulative top balances ===== */
+/** ===== NEW: Area Chart - cumulative top balances ===== */
 function CumulativeAreaChart({ points, height = 260 }) {
   const base = (points || []).slice(0, 8);
   if (!base.length) return <div style={{ opacity: 0.75, marginTop: 10 }}>Belum ada data.</div>;
@@ -954,7 +954,7 @@ export default function DashboardPage() {
       )}
 
       {/* =========================
-          BARIS 3: TOP 5 RANK + DETAIL (existing)
+          BARIS 3: TOP 5 RANK + DETAIL
          ========================= */}
       {isInitialLoading ? (
         <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 12, marginTop: 14 }}>

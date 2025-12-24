@@ -23,7 +23,6 @@ export async function registerTkd0100(payload) {
         message = data.message;
       }
     } catch (_) {
-      // kalau backend nggak kirim JSON error, abaikan
     }
     throw new Error(message);
   }
@@ -52,15 +51,12 @@ export async function loginTkd0200(payload) {
   if (!response.ok) {
     let message = "";
 
-    // coba ambil error dari backend (remark/message)
     try {
       const data = await response.json();
       message = data?.remark || data?.message || "";
     } catch (_) {
-      // ignore kalau bukan JSON
     }
 
-    // fallback message yang "ramah", jangan tampil status 400 ke user
     if (!message) {
       const isOtpFlow = payload?.verifyOtp === true;
 
