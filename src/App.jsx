@@ -6,6 +6,9 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
+import Generate2FAPage from "./pages/Generate2FAPage.jsx";
+import ProfileAdminPage from "./pages/ProfileAdminPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import BankInfoPage from "./pages/BankInfoPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
@@ -21,6 +24,9 @@ function App() {
 
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/generate-2fa" element={<Generate2FAPage />} />
 
       
       <Route
@@ -46,6 +52,15 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfileAdminPage />
           </ProtectedRoute>
         }
       />

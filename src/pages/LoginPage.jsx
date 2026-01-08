@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
-import { loginTkd0200 } from "../api/tikusClient.js";
+import { verify2faAdm0700, verifyPasswordAdm0400 } from "../api/adminClient.js";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -25,39 +25,33 @@ function LoginPage() {
       localStorage.removeItem("authEmail");
 
       // ======================
-      // STEP 1: EMAIL + PASSWORD
+      // STEP 1: VERIFY PASSWORD (adm0400)
       // ======================
       if (step === "CRED") {
-        const result = await loginTkd0200({ email, password });
+        const res = await verifyPasswordAdm0400(email, password);
 
-        // Kalau backend mengirim status selain "00" = gagal
-        if (result?.status && result.status !== "00") {
-          setError(result?.remark || "Login gagal");
+        if (res?.status === "00") {
+          setOtp("");
+          setStep("OTP");
           return;
         }
 
-        setOtp("");
-        setStep("OTP");
+        setError(res?.remark || "Email atau password salah");
         return;
       }
 
       // ======================
-      // STEP 2: VERIFY OTP
+      // STEP 2: VERIFY OTP (adm0700)
       // ======================
-      const result = await loginTkd0200({
-        email,
-        password,
-        otp,
-        verifyOtp: true,
-      });
-
-      if (result?.status === "00") {
+      const res = await verify2faAdm0700(email, otp);
+      if (res?.status === "00") {
         localStorage.setItem("authEmail", email);
         navigate("/dashboard");
-      } else {
-        setError(result?.remark || "OTP tidak valid / verifikasi gagal");
-        localStorage.removeItem("authEmail");
+        return;
       }
+
+      setError(res?.remark || "OTP tidak valid");
+      localStorage.removeItem("authEmail");
     } catch (err) {
       setError(err?.message || "Terjadi kesalahan saat login");
       localStorage.removeItem("authEmail");
@@ -65,7 +59,6 @@ function LoginPage() {
       setLoading(false);
     }
   };
-
 
   // UI Step 2: OTP
   if (step === "OTP") {
@@ -104,7 +97,11 @@ function LoginPage() {
 
           {error && <p className="auth-error">{error}</p>}
 
-          <button className="primary-button" type="submit" disabled={loading || otp.length < 6}>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={loading || otp.length < 6}
+          >
             {loading ? "Memproses..." : "Verifikasi & Masuk"}
           </button>
 
@@ -122,60 +119,17 @@ function LoginPage() {
           </button>
 
           <p className="auth-switch">
-            Salah email/password? <Link to="/login" onClick={() => setStep("CRED")}>Ulang login</Link>
+            Belum punya 2FA?{" "}
+            <Link to="/forgot-password">Reset password & 2FA</Link>
           </p>
         </form>
       </AuthLayout>
     );
   }
 
-    if (step === "OTP") {
-  return (
-    <AuthLayout title="Verifikasi OTP" subtitle="Masukkan kode 6 digit dari Google Authenticator">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label className="form-label">OTP</label>
-          <div className="input-box">
-            <input
-              className="otp-input"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="123456"
-              required
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            />
-          </div>
-        </div>
-
-        {error && <p className="auth-error">{error}</p>}
-
-        <button className="primary-button" type="submit" disabled={loading || otp.length < 6}>
-          {loading ? "Memproses..." : "Verifikasi & Masuk"}
-        </button>
-
-        <button
-          className="secondary-button"
-          type="button"
-          disabled={loading}
-          onClick={() => {
-            setError("");
-            setOtp("");
-            setStep("CRED");
-          }}
-        >
-          Kembali
-        </button>
-      </form>
-    </AuthLayout>
-  );
-  }
-
-
   // UI Step 1: Email + Password
   return (
-    <AuthLayout title="Welcome back 👋" subtitle="Welcome To Tikus Management">
+    <AuthLayout title="Welcome back 👋" subtitle="Login Admin + 2FA">
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-field">
           <label className="form-label">Email</label>
@@ -210,11 +164,18 @@ function LoginPage() {
         </button>
 
         <p className="auth-switch">
-          Forget Password ? <Link to="/forgot-password">Reset Password</Link>
+          Lupa password? <Link to="/forgot-password">Reset Password</Link>
         </p>
 
         <p className="auth-switch">
-          Don't Have Account ? <Link to="/register">Register</Link>
+          Baru selesai verifikasi email?{" "}
+          <Link to="/verify-email" state={{ email }}>
+            Sudah Verifikasi
+          </Link>
+        </p>
+
+        <p className="auth-switch">
+          Belum punya akun? <Link to="/register">Register</Link>
         </p>
       </form>
     </AuthLayout>

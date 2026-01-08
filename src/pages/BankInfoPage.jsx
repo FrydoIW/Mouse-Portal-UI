@@ -355,6 +355,10 @@ export default function BankInfoPage() {
             {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
           </div>
 
+          <button style={logoutButtonStyle} onClick={() => navigate("/profile")}>
+            Profile
+          </button>
+
           <button style={logoutButtonStyle} onClick={handleLogout}>
             Logout
           </button>
@@ -391,6 +395,17 @@ export default function BankInfoPage() {
                   background: theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
                 }}
               />
+            </button>
+
+            <button
+              className="mobile-menu-item"
+              onClick={() => {
+                navigate("/profile");
+                setIsMobileMenuOpen(false);
+              }}
+              style={{ justifyContent: "center" }}
+            >
+              <span>Profile</span>
             </button>
 
             <button

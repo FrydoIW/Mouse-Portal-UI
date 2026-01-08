@@ -2,17 +2,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
-import { registerTkd0100 } from "../api/tikusClient";
+import { registerAdminAdm0100, sendVerificationEmailEma0100 } from "../api/adminClient";
 
 function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     address: "",
     gender: "",
-    birthDate: "",
-    position: "",
+    birthDt: "",
     email: "",
-    passwordCredential: "",
+    password: "",
   });
 
   const navigate = useNavigate();
@@ -20,9 +19,6 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-
-  const [qrBase64, setQrBase64] = useState(null);
-  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,105 +29,71 @@ function RegisterPage() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setSuccess(null);
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
-  try {
-    const res = await registerTkd0100(form);
+    try {
+      const payload = {
+        name: form.name,
+        address: form.address,
+        birthDt: form.birthDt,
+        gender: form.gender,
+        email: form.email,
+        password: form.password,
+      };
 
-    if (!res || !res.qrBase64) {
-      navigate("/login");
-      return;
+      const res = await registerAdminAdm0100(payload);
+
+      // docs kamu: success register kadang status "09"
+      const ok = res?.status === "09" || res?.status === "00";
+      if (!ok) {
+        setError(res?.remark || "Gagal register");
+        return;
+      }
+
+      // Flow baru: setelah register, frontend otomatis trigger kirim email verifikasi (ema0100)
+      // Catatan: kalau backend kamu sudah otomatis mengirim email saat register, bagian ini bisa dihapus
+      // supaya tidak mengirim email 2x.
+      try {
+        await sendVerificationEmailEma0100(form.email);
+      } catch (_) {
+        // non-blocking: tetap lanjut ke halaman verifikasi
+      }
+
+      setSuccess(
+        res?.remark ||
+          "Registrasi berhasil. Email verifikasi sudah dikirim."
+      );
+
+      // Tandai bahwa user sedang dalam proses onboarding (verifikasi email -> generate 2FA)
+      // Dipakai untuk membatasi akses generate 2FA agar tidak bisa sembarang orang memanggil endpoint hanya bermodal email.
+      localStorage.setItem("pending2faEmail", form.email);
+      localStorage.setItem("pending2faAt", String(Date.now()));
+      localStorage.removeItem("allowGenerate2faEmail");
+      localStorage.removeItem("allowGenerate2faAt");
+
+      // arahkan ke halaman cek status verifikasi email
+      navigate("/verify-email", {
+        state: { email: form.email, from: "register" },
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Gagal register");
+    } finally {
+      setLoading(false);
     }
-
-    setRegisteredEmail(form.email);
-    setQrBase64(res.qrBase64);
-    setSuccess(res.remark || "Registrasi berhasil. Silakan aktivasi Google Authenticator.");
-
-  } catch (err) {
-    console.error(err);
-    setError(err.message || "Gagal register");
-  } finally {
-    setLoading(false);
-  }
-};
-
-    if (qrBase64) {
-    const qrSrc = qrBase64.startsWith("data:image")
-      ? qrBase64
-      : `data:image/png;base64,${qrBase64}`;
-
-    return (
-      <AuthLayout
-        title="Aktivasi Google Authenticator"
-        subtitle="Scan QR ini sebelum login pertama kali."
-      >
-        <div className="ga-activation">
-          {success && (
-            <p className="ga-activation__success" role="status">
-              {success}
-            </p>
-          )}
-
-          <div className="ga-activation__qrWrap">
-            <img
-              className="ga-activation__qr"
-              src={qrSrc}
-              alt="QR Google Authenticator"
-            />
-          </div>
-
-          <div className="ga-activation__hint">
-            <p className="ga-activation__hintTitle">Cara aktivasi:</p>
-            <ol className="ga-activation__steps">
-              <li>Buka aplikasi Google Authenticator.</li>
-              <li>Pilih <b>Tambah</b> → <b>Scan QR code</b>.</li>
-              <li>Scan QR di atas sampai akun muncul.</li>
-            </ol>
-
-            {registeredEmail ? (
-              <p className="ga-activation__meta">
-                Akun: <b>{registeredEmail}</b>
-              </p>
-            ) : null}
-          </div>
-
-          {error && (
-            <p className="ga-activation__error" role="alert">
-              {error}
-            </p>
-          )}
-
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => navigate("/login")}
-          >
-            Saya sudah scan, lanjut ke Login
-          </button>
-
-          <p className="auth-switch">
-            QR tidak bisa discan? Pastikan brightness cukup, atau refresh halaman.
-          </p>
-        </div>
-      </AuthLayout>
-    );
-  }
+  };
 
   return (
     <AuthLayout
-      title="Create new account"
-      subtitle="Start for free, join our platform."
+      title="Register Admin"
+      subtitle="Buat akun admin, lalu verifikasi email sebelum generate 2FA."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
-        {error && (
-          <p style={{ color: "#fca5a5", fontSize: "0.85rem" }}>{error}</p>
-        )}
-        {success && (
-          <p style={{ color: "#4ade80", fontSize: "0.85rem" }}>{success}</p>
-        )}
+        {error && <p className="auth-error">{error}</p>}
+        {success && <p className="auth-success">{success}</p>}
 
         {/* name */}
         <div className="form-field">
@@ -174,35 +136,20 @@ function RegisterPage() {
               required
             >
               <option value="">Pilih gender</option>
-              <option value="MALE">Laki-laki</option>
-              <option value="FEMALE">Perempuan</option>
+              <option value="Male">Laki-laki</option>
+              <option value="Female">Perempuan</option>
             </select>
           </div>
         </div>
 
-        {/* birthDate */}
+        {/* birthDt */}
         <div className="form-field">
           <label className="form-label">Tanggal lahir</label>
           <div className="input-box">
             <input
               type="date"
-              name="birthDate"
-              value={form.birthDate}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        </div>
-
-        {/* position */}
-        <div className="form-field">
-          <label className="form-label">Posisi / Jabatan</label>
-          <div className="input-box">
-            <input
-              type="text"
-              name="position"
-              placeholder="Mis. Staff, Manager"
-              value={form.position}
+              name="birthDt"
+              value={form.birthDt}
               onChange={handleChange}
               required
             />
@@ -224,15 +171,15 @@ function RegisterPage() {
           </div>
         </div>
 
-        {/* passwordCredential */}
+        {/* password */}
         <div className="form-field">
           <label className="form-label">Password</label>
           <div className="input-box">
             <input
               type="password"
-              name="passwordCredential"
+              name="password"
               placeholder="••••••••"
-              value={form.passwordCredential}
+              value={form.password}
               onChange={handleChange}
               required
             />
@@ -240,7 +187,7 @@ function RegisterPage() {
         </div>
 
         <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? "Memproses..." : "Create account"}
+          {loading ? "Memproses..." : "Register"}
         </button>
 
         <p className="auth-switch">

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
-import { resetTkd0300 } from "../api/tikusClient.js";
+import { sendVerificationEmailEma0100 } from "../api/adminClient.js";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -19,24 +19,22 @@ function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const payload = {
-        email: email,
-        procType: "VERIFY_EMAIL",
-        newPassword: "",
-      };
+      const result = await sendVerificationEmailEma0100(email);
 
-      const result = await resetTkd0300(payload);
-
-      if (result.status === "00") {
-        setInfo(result.remark || "Email valid");
-        navigate("/reset-password", {
-          state: { email },
-        });
-      } else {
-        setError(result.remark || "Email tidak ditemukan");
+      const ok = result?.status === "00" || result?.status === "09";
+      if (!ok) {
+        setError(result?.remark || "Gagal mengirim email verifikasi");
+        return;
       }
+
+      setInfo(result?.remark || "Email verifikasi terkirim. Silakan cek inbox/spam.");
+
+      // lanjut ke halaman reset (di sana ada tombol 'Sudah Verifikasi' + input password baru)
+      navigate("/reset-password", {
+        state: { email },
+      });
     } catch (err) {
-      setError(err.message || "Terjadi kesalahan saat verifikasi email");
+      setError(err.message || "Terjadi kesalahan saat kirim email verifikasi");
     } finally {
       setLoading(false);
     }
@@ -45,7 +43,7 @@ function ForgotPasswordPage() {
   return (
     <AuthLayout
       title="Lupa Password 🔐"
-      subtitle="Masukkan email yang terdaftar. Kami akan cek dulu."
+      subtitle="Masukkan email yang terdaftar. Kami akan kirim email verifikasi."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-field">
@@ -65,7 +63,7 @@ function ForgotPasswordPage() {
         {info && <p className="auth-success">{info}</p>}
 
         <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? "Memeriksa..." : "Verifikasi Email"}
+          {loading ? "Mengirim..." : "Kirim Email Verifikasi"}
         </button>
 
         <p className="auth-switch">
