@@ -128,6 +128,12 @@ const grid2 = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))
 const field = { display: "flex", flexDirection: "column", gap: 6 };
 const label = { fontSize: 12.5, color: "var(--card-text-sub)", fontWeight: 700 };
 
+/** ✅ NEW: rekType options (hasil interview) */
+const REK_TYPE_OPTIONS = ["DEPOSIT", "WITHDRAW", "KAS", "TAMPUNGAN"];
+
+/** ✅ NEW: status options */
+const STATUS_OPTIONS = ["ACTIVE", "STOCK"];
+
 const emptyAtmForm = {
   id: "",
   branchId: "",
@@ -135,6 +141,7 @@ const emptyAtmForm = {
   ktpNo: "",
   motherNm: "",
   birthPlace: "",
+  birthDt: "",
   homeAddr: "",
   rt: "",
   rw: "",
@@ -158,6 +165,8 @@ const emptyAtmForm = {
   passEmail: "",
   masaSewaBank: "",
   saldo: "",
+  /** ✅ NEW */
+  status: "",
 };
 
 export default function BankInfoPage() {
@@ -183,9 +192,11 @@ export default function BankInfoPage() {
     return v ? Number(v) : "";
   });
 
-  const [rekFilter, setRekFilter] = useState("ACTIVE"); // ACTIVE | STOCK
-  const [items, setItems] = useState([]);
+  /** ✅ NEW: filter rekType + status */
+  const [rekTypeFilter, setRekTypeFilter] = useState("ALL"); // ALL | DEPOSIT | WITHDRAW | KAS | TAMPUNGAN
+  const [statusFilter, setStatusFilter] = useState("ACTIVE"); // ALL | ACTIVE | STOCK
 
+  const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   // modal + confirm
@@ -197,7 +208,7 @@ export default function BankInfoPage() {
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, rekeningNm}
 
   // detail modal
-  const [detailItem, setDetailItem] = useState(null); // atm item
+  const [detailItem, setDetailItem] = useState(null);
   const [showSensitive, setShowSensitive] = useState(false);
 
   const mask = (value) => {
@@ -245,7 +256,9 @@ export default function BankInfoPage() {
         setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const selectedBranch = useMemo(() => {
@@ -256,13 +269,18 @@ export default function BankInfoPage() {
   const filtered = useMemo(() => {
     const id = Number(selectedBranchId);
     const q = searchQuery.trim().toLowerCase();
+
     return items.filter((x) => {
       if (id && Number(x.branchId) !== id) return false;
 
       const rekType = String(x.rekType || "").toUpperCase();
-      const isStock = rekType.includes("STOCK");
-      if (rekFilter === "STOCK" && !isStock) return false;
-      if (rekFilter === "ACTIVE" && isStock) return false;
+      const status = String(x.status || "ACTIVE").toUpperCase(); // fallback biar data lama aman
+
+      // ✅ filter rekType
+      if (rekTypeFilter !== "ALL" && rekType !== rekTypeFilter) return false;
+
+      // ✅ filter status
+      if (statusFilter !== "ALL" && status !== statusFilter) return false;
 
       if (!q) return true;
       return (
@@ -273,12 +291,21 @@ export default function BankInfoPage() {
         String(x.email || "").toLowerCase().includes(q)
       );
     });
-  }, [items, selectedBranchId, rekFilter, searchQuery]);
+  }, [items, selectedBranchId, rekTypeFilter, statusFilter, searchQuery]);
 
   const openAdd = () => {
     if (!selectedBranchId) return;
+
+    const defaultRekType = rekTypeFilter !== "ALL" ? rekTypeFilter : "DEPOSIT";
+    const defaultStatus = statusFilter !== "ALL" ? statusFilter : "ACTIVE";
+
     setMode("add");
-    setForm({ ...emptyAtmForm, branchId: Number(selectedBranchId), rekType: rekFilter === "STOCK" ? "STOCK" : "ACTIVE" });
+    setForm({
+      ...emptyAtmForm,
+      branchId: Number(selectedBranchId),
+      rekType: defaultRekType,
+      status: defaultStatus,
+    });
     setModalOpen(true);
   };
 
@@ -290,7 +317,11 @@ export default function BankInfoPage() {
       branchId: Number(item.branchId ?? selectedBranchId),
       expiredKtpDt: toDateInput(item.expiredKtpDt),
       atmExpiredDt: toDateInput(item.atmExpiredDt),
+      birthDt: toDateInput(item.birthDt),
       masaSewaBank: item.masaSewaBank ?? "",
+      saldo: item.saldo ?? "",
+      rekType: String(item.rekType || ""),
+      status: String(item.status || "ACTIVE"),
     });
     setModalOpen(true);
   };
@@ -303,17 +334,36 @@ export default function BankInfoPage() {
 
   const submit = async () => {
     const payload = { ...form, branchId: Number(form.branchId || selectedBranchId || 0) };
+
     payload.saldo = Number(payload.saldo || 0);
+    payload.masaSewaBank = payload.masaSewaBank === "" ? "" : Number(payload.masaSewaBank || 0);
+
+    payload.rekType = String(payload.rekType || "").toUpperCase();
+    payload.status = String(payload.status || "").toUpperCase();
+    payload.birthDt = payload.birthDt ? String(payload.birthDt).slice(0, 10) : "";
+
+
     if (!payload.branchId) return;
+    if (!payload.rekType) {
+      setError("Rek Type wajib diisi");
+      return;
+    }
+    if (!payload.status) {
+      setError("Status wajib diisi");
+      return;
+    }
 
     try {
       setBusy(true);
+      setError("");
+
       if (mode === "add") {
         delete payload.id;
         await addAtmAtm0100(payload);
       } else {
         await editAtmAtm0300(payload);
       }
+
       await reloadAtm();
       closeModal();
     } catch (e) {
@@ -326,6 +376,7 @@ export default function BankInfoPage() {
   const doDelete = async (id) => {
     try {
       setBusy(true);
+      setError("");
       await deleteAtmAtm0400({ atmId: String(id) });
       setConfirmDelete(null);
       await reloadAtm();
@@ -351,12 +402,18 @@ export default function BankInfoPage() {
       {/* TOP BAR */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: "50%",
-            background: "linear-gradient(135deg, #38bdf8, #6366f1)",
-            display: "grid", placeItems: "center",
-            color: "#071021", fontWeight: 900,
-          }}>
+          <div
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #38bdf8, #6366f1)",
+              display: "grid",
+              placeItems: "center",
+              color: "#071021",
+              fontWeight: 900,
+            }}
+          >
             TK
           </div>
           <div>
@@ -371,13 +428,26 @@ export default function BankInfoPage() {
           </button>
           <div style={{ color: "var(--card-text-sub)", fontSize: 13.5 }}>Hi,</div>
           <div style={{ fontWeight: 800 }}>{email}</div>
-          <button style={smallBtn()} onClick={() => navigate("/profile")}>Profile</button>
-          <button style={smallBtn("danger")} onClick={handleLogout}>Logout</button>
+          <button style={smallBtn()} onClick={() => navigate("/profile")}>
+            Profile
+          </button>
+          <button style={smallBtn("danger")} onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </div>
 
       {/* HERO */}
-      <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "rgba(2,6,23,0.35)", backdropFilter: "blur(14px)" }}>
+      <div
+        style={{
+          marginTop: 20,
+          padding: "22px 24px",
+          borderRadius: 22,
+          border: "1px solid var(--card-border)",
+          background: "rgba(2,6,23,0.35)",
+          backdropFilter: "blur(14px)",
+        }}
+      >
         <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>COMPANY PROFILES</div>
         <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
           <h1 style={{ fontSize: 44, lineHeight: 1.05, margin: 0, fontWeight: 900 }}>
@@ -388,10 +458,18 @@ export default function BankInfoPage() {
         <div style={{ marginTop: 8, color: "var(--card-text-sub)", fontSize: 13.5 }}>Kelola rekening ATM</div>
 
         <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button style={pillBtn(false)} onClick={() => navigate("/home")}>TEAM INFORMATION</button>
-          <button style={pillBtn(true)} disabled>BANK INFO</button>
-          <button style={pillBtn(false)} onClick={() => navigate("/expense")}>EXPENSE</button>
-          <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>DASHBOARD</button>
+          <button style={pillBtn(false)} onClick={() => navigate("/home")}>
+            TEAM INFORMATION
+          </button>
+          <button style={pillBtn(true)} disabled>
+            BANK INFO
+          </button>
+          <button style={pillBtn(false)} onClick={() => navigate("/expense")}>
+            EXPENSE
+          </button>
+          <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>
+            DASHBOARD
+          </button>
         </div>
       </div>
 
@@ -404,16 +482,36 @@ export default function BankInfoPage() {
               <select style={selectStyle} value={selectedBranchId} onChange={(e) => pickBranch(Number(e.target.value))}>
                 <option value="">-- pilih branch --</option>
                 {branches.map((b) => (
-                  <option key={b.branchId} value={b.branchId}>{b.branchName}</option>
+                  <option key={b.branchId} value={b.branchId}>
+                    {b.branchName}
+                  </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ minWidth: 180 }}>
+            {/* ✅ NEW: Rek Type filter */}
+            <div style={{ minWidth: 220 }}>
               <div style={label}>Rek Type</div>
-              <select style={selectStyle} value={rekFilter} onChange={(e) => setRekFilter(e.target.value)}>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="STOCK">STOCK</option>
+              <select style={selectStyle} value={rekTypeFilter} onChange={(e) => setRekTypeFilter(e.target.value)}>
+                <option value="ALL">ALL</option>
+                {REK_TYPE_OPTIONS.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ✅ NEW: Status filter */}
+            <div style={{ minWidth: 200 }}>
+              <div style={label}>Status</div>
+              <select style={selectStyle} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="ALL">ALL</option>
+                {STATUS_OPTIONS.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -424,31 +522,52 @@ export default function BankInfoPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button style={{ ...primaryCtaStyle, padding: "10px 16px" }} onClick={openAdd}>+ Add ATM</button>
-            <span style={badge}>{filtered.length} / {items.filter((x)=> !selectedBranchId || Number(x.branchId)===Number(selectedBranchId)).length} data</span>
+            <button style={{ ...primaryCtaStyle, padding: "10px 16px" }} onClick={openAdd}>
+              + Add ATM
+            </button>
+            <span style={badge}>
+              {filtered.length} / {items.filter((x) => !selectedBranchId || Number(x.branchId) === Number(selectedBranchId)).length} data
+            </span>
           </div>
         </div>
 
         <div style={{ marginTop: 12 }}>
-          {selectedBranch ? (
-            <span style={badge}>Branch: {selectedBranch.branchName}</span>
-          ) : null}
+          {selectedBranch ? <span style={badge}>Branch: {selectedBranch.branchName}</span> : null}
         </div>
 
         {loading ? <div style={{ marginTop: 12, color: "var(--card-text-sub)" }}>Loading...</div> : null}
         {!loading && error ? (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 14, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.10)", color: "rgba(248,113,113,0.95)" }}>
+          <div
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              border: "1px solid rgba(239,68,68,0.35)",
+              background: "rgba(239,68,68,0.10)",
+              color: "rgba(248,113,113,0.95)",
+            }}
+          >
             Ups, Error: {error}
           </div>
         ) : null}
 
         {/* TABLE */}
         <div style={{ marginTop: 14, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
             <thead>
               <tr>
-                {["#", "Rekening", "Bank", "Rek No", "ATM No", "Rek Type", "Saldo", "Phone", "Email", "Action"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "12px 10px", borderBottom: "1px solid var(--card-border)", color: "var(--card-text-sub)", fontSize: 12.5, letterSpacing: 0.5 }}>
+                {["#", "Rekening", "Bank", "Rek No", "ATM No", "Rek Type", "Status", "Saldo", "Phone", "Email", "Action"].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left",
+                      padding: "12px 10px",
+                      borderBottom: "1px solid var(--card-border)",
+                      color: "var(--card-text-sub)",
+                      fontSize: 12.5,
+                      letterSpacing: 0.5,
+                    }}
+                  >
                     {h}
                   </th>
                 ))}
@@ -457,7 +576,9 @@ export default function BankInfoPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: 14, color: "var(--card-text-sub)" }}>No Data Found</td>
+                  <td colSpan={11} style={{ padding: 14, color: "var(--card-text-sub)" }}>
+                    No Data Found
+                  </td>
                 </tr>
               ) : (
                 filtered.map((it, idx) => (
@@ -468,14 +589,21 @@ export default function BankInfoPage() {
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.rekNo}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.atmNo}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.rekType}</td>
+                    <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{String(it.status || "ACTIVE")}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>Rp {formatIdr(it.saldo)}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.noHp}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.email}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <button style={smallBtn()} onClick={() => { setDetailItem(it); setShowSensitive(false); }}>Detail</button>
-                        <button style={smallBtn()} onClick={() => openEdit(it)}>Update</button>
-                        <button style={smallBtn("danger")} onClick={() => setConfirmDelete({ id: it.id, rekeningNm: it.rekeningNm })}>Delete</button>
+                        <button style={smallBtn()} onClick={() => { setDetailItem(it); setShowSensitive(false); }}>
+                          Detail
+                        </button>
+                        <button style={smallBtn()} onClick={() => openEdit(it)}>
+                          Update
+                        </button>
+                        <button style={smallBtn("danger")} onClick={() => setConfirmDelete({ id: it.id, rekeningNm: it.rekeningNm })}>
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -492,33 +620,49 @@ export default function BankInfoPage() {
           <div style={modalCard} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ fontWeight: 900, fontSize: 16 }}>{mode === "add" ? "Add ATM" : "Edit ATM"}</div>
-              <button style={smallBtn()} onClick={closeModal} disabled={busy}>✕</button>
+              <button style={smallBtn()} onClick={closeModal} disabled={busy}>
+                ✕
+              </button>
             </div>
 
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Row 1: Branch + Status + Rek Type */}
               <div style={grid3}>
                 <div style={field}>
                   <div style={label}>Branch</div>
                   <input style={input} value={selectedBranch?.branchName || "-"} disabled />
                 </div>
+
                 <div style={field}>
-                  <div style={label}>Rek Type</div>
-                  <select
-                    style={selectStyle}
-                    value={form.rekType || rekFilter}
-                    onChange={(e) => setForm((p) => ({ ...p, rekType: e.target.value }))}
-                  >
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="STOCK">STOCK</option>
+                  <div style={label}>Status</div>
+                  <select style={selectStyle} value={form.status || "ACTIVE"} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+                    {STATUS_OPTIONS.map((x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                <div style={field}>
+                  <div style={label}>Rek Type</div>
+                  <select style={selectStyle} value={form.rekType || ""} onChange={(e) => setForm((p) => ({ ...p, rekType: e.target.value }))}>
+                    <option value="">-- pilih rek type --</option>
+                    {REK_TYPE_OPTIONS.map((x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Bank + Name + Rek No */}
+              <div style={grid3}>
                 <div style={field}>
                   <div style={label}>Bank</div>
                   <input style={input} value={form.bankNm} onChange={(e) => setForm((p) => ({ ...p, bankNm: e.target.value }))} />
                 </div>
-              </div>
-
-              <div style={grid3}>
                 <div style={field}>
                   <div style={label}>Rekening Name</div>
                   <input style={input} value={form.rekeningNm} onChange={(e) => setForm((p) => ({ ...p, rekeningNm: e.target.value }))} />
@@ -527,13 +671,14 @@ export default function BankInfoPage() {
                   <div style={label}>Rek No</div>
                   <input style={input} value={form.rekNo} onChange={(e) => setForm((p) => ({ ...p, rekNo: e.target.value }))} />
                 </div>
+              </div>
+
+              {/* Row 3: ATM + Saldo + PIN */}
+              <div style={grid3}>
                 <div style={field}>
                   <div style={label}>ATM No</div>
                   <input style={input} value={form.atmNo} onChange={(e) => setForm((p) => ({ ...p, atmNo: e.target.value }))} />
                 </div>
-              </div>
-
-              <div style={grid3}>
                 <div style={field}>
                   <div style={label}>Saldo (Rp)</div>
                   <input style={input} value={form.saldo} onChange={(e) => setForm((p) => ({ ...p, saldo: e.target.value }))} />
@@ -542,13 +687,19 @@ export default function BankInfoPage() {
                   <div style={label}>PIN</div>
                   <input style={input} value={form.pinNo} onChange={(e) => setForm((p) => ({ ...p, pinNo: e.target.value }))} />
                 </div>
-                <div style={field}>
-                  <div style={label}>ATM Expired</div>
-                  <input type="date" style={input} value={toDateInput(form.atmExpiredDt)} onChange={(e) => setForm((p) => ({ ...p, atmExpiredDt: e.target.value }))} />
-                </div>
               </div>
 
-              <div style={grid2}>
+              {/* Row 4: ATM Expired + Phone + Email */}
+              <div style={grid3}>
+                <div style={field}>
+                  <div style={label}>ATM Expired</div>
+                  <input
+                    type="date"
+                    style={input}
+                    value={toDateInput(form.atmExpiredDt)}
+                    onChange={(e) => setForm((p) => ({ ...p, atmExpiredDt: e.target.value }))}
+                  />
+                </div>
                 <div style={field}>
                   <div style={label}>No HP</div>
                   <input style={input} value={form.noHp} onChange={(e) => setForm((p) => ({ ...p, noHp: e.target.value }))} />
@@ -568,6 +719,7 @@ export default function BankInfoPage() {
                   <div style={label}>Pass M-Banking</div>
                   <input style={input} value={form.passMBanking} onChange={(e) => setForm((p) => ({ ...p, passMBanking: e.target.value }))} />
                 </div>
+                <div style={field} />
               </div>
 
               <div style={grid2}>
@@ -577,24 +729,59 @@ export default function BankInfoPage() {
                 </div>
                 <div style={field}>
                   <div style={label}>Expired KTP</div>
-                  <input type="date" style={input} value={toDateInput(form.expiredKtpDt)} onChange={(e) => setForm((p) => ({ ...p, expiredKtpDt: e.target.value }))} />
+                  <input
+                    type="date"
+                    style={input}
+                    value={toDateInput(form.expiredKtpDt)}
+                    onChange={(e) => setForm((p) => ({ ...p, expiredKtpDt: e.target.value }))}
+                  />
                 </div>
               </div>
 
               <div style={grid3}>
                 <div style={field}>
-                  <div style={label}>Birth Place</div>
-                  <input style={input} value={form.birthPlace} onChange={(e) => setForm((p) => ({ ...p, birthPlace: e.target.value }))} />
+                  <div style={label}>Tanggal Lahir</div>
+                  <input
+                    type="date"
+                    style={input}
+                    value={toDateInput(form.birthDt)}
+                    onChange={(e) => setForm((p) => ({ ...p, birthDt: e.target.value }))}
+                  />
                 </div>
+                                
+                <div style={field}>
+                  <div style={label}>Birth Place</div>
+                  <input
+                    style={input}
+                    value={form.birthPlace}
+                    onChange={(e) => setForm((p) => ({ ...p, birthPlace: e.target.value }))}
+                  />
+                </div>
+                                
                 <div style={field}>
                   <div style={label}>Mother Name</div>
-                  <input style={input} value={form.motherNm} onChange={(e) => setForm((p) => ({ ...p, motherNm: e.target.value }))} />
-                </div>
-                <div style={field}>
-                  <div style={label}>Gender</div>
-                  <input style={input} value={form.gender} onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))} placeholder="M / F" />
+                  <input
+                    style={input}
+                    value={form.motherNm}
+                    onChange={(e) => setForm((p) => ({ ...p, motherNm: e.target.value }))}
+                  />
                 </div>
               </div>
+                                
+              <div style={grid3}>
+                <div style={field}>
+                  <div style={label}>Gender</div>
+                  <input
+                    style={input}
+                    value={form.gender}
+                    onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))}
+                    placeholder="M / F"
+                  />
+                </div>
+                <div style={field} />
+                <div style={field} />
+              </div>
+
 
               <div style={field}>
                 <div style={label}>Home Address</div>
@@ -602,15 +789,33 @@ export default function BankInfoPage() {
               </div>
 
               <div style={grid3}>
-                <div style={field}><div style={label}>RT</div><input style={input} value={form.rt} onChange={(e) => setForm((p)=>({...p,rt:e.target.value}))} /></div>
-                <div style={field}><div style={label}>RW</div><input style={input} value={form.rw} onChange={(e) => setForm((p)=>({...p,rw:e.target.value}))} /></div>
-                <div style={field}><div style={label}>Kelurahan</div><input style={input} value={form.kelurahan} onChange={(e) => setForm((p)=>({...p,kelurahan:e.target.value}))} /></div>
+                <div style={field}>
+                  <div style={label}>RT</div>
+                  <input style={input} value={form.rt} onChange={(e) => setForm((p) => ({ ...p, rt: e.target.value }))} />
+                </div>
+                <div style={field}>
+                  <div style={label}>RW</div>
+                  <input style={input} value={form.rw} onChange={(e) => setForm((p) => ({ ...p, rw: e.target.value }))} />
+                </div>
+                <div style={field}>
+                  <div style={label}>Kelurahan</div>
+                  <input style={input} value={form.kelurahan} onChange={(e) => setForm((p) => ({ ...p, kelurahan: e.target.value }))} />
+                </div>
               </div>
 
               <div style={grid3}>
-                <div style={field}><div style={label}>Kecamatan</div><input style={input} value={form.kecamatan} onChange={(e) => setForm((p)=>({...p,kecamatan:e.target.value}))} /></div>
-                <div style={field}><div style={label}>Kabupaten</div><input style={input} value={form.kabupaten} onChange={(e) => setForm((p)=>({...p,kabupaten:e.target.value}))} /></div>
-                <div style={field}><div style={label}>Province</div><input style={input} value={form.province} onChange={(e) => setForm((p)=>({...p,province:e.target.value}))} /></div>
+                <div style={field}>
+                  <div style={label}>Kecamatan</div>
+                  <input style={input} value={form.kecamatan} onChange={(e) => setForm((p) => ({ ...p, kecamatan: e.target.value }))} />
+                </div>
+                <div style={field}>
+                  <div style={label}>Kabupaten</div>
+                  <input style={input} value={form.kabupaten} onChange={(e) => setForm((p) => ({ ...p, kabupaten: e.target.value }))} />
+                </div>
+                <div style={field}>
+                  <div style={label}>Province</div>
+                  <input style={input} value={form.province} onChange={(e) => setForm((p) => ({ ...p, province: e.target.value }))} />
+                </div>
               </div>
 
               <div style={grid2}>
@@ -623,15 +828,17 @@ export default function BankInfoPage() {
                   <input style={input} value={form.remark} onChange={(e) => setForm((p) => ({ ...p, remark: e.target.value }))} />
                 </div>
               </div>
-            
-                <div style={field}>
-                  <div style={label}>Masa Sewa (bulan)</div>
-                  <input style={input} value={form.masaSewaBank} onChange={(e) => setForm((p) => ({ ...p, masaSewaBank: e.target.value }))} />
-                </div>
+
+              <div style={field}>
+                <div style={label}>Masa Sewa (bulan)</div>
+                <input style={input} value={form.masaSewaBank} onChange={(e) => setForm((p) => ({ ...p, masaSewaBank: e.target.value }))} />
               </div>
+            </div>
 
             <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button style={smallBtn()} onClick={closeModal} disabled={busy}>Cancel</button>
+              <button style={smallBtn()} onClick={closeModal} disabled={busy}>
+                Cancel
+              </button>
               <button style={smallBtn("primary")} onClick={submit} disabled={busy}>
                 {busy ? "Saving..." : "Save"}
               </button>
@@ -648,14 +855,16 @@ export default function BankInfoPage() {
               <div>
                 <div style={{ fontWeight: 900, fontSize: 16 }}>ATM Detail</div>
                 <div style={{ marginTop: 4, color: "var(--card-text-sub)", fontSize: 13 }}>
-                  Branch: {selectedBranch?.branchName || "-"} • Rek Type: {detailItem.rekType || "-"}
+                  Branch: {selectedBranch?.branchName || "-"} • Rek Type: {detailItem.rekType || "-"} • Status: {String(detailItem.status || "ACTIVE")}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <button style={smallBtn()} onClick={() => setShowSensitive((p) => !p)}>
                   {showSensitive ? "Hide sensitive" : "Show sensitive"}
                 </button>
-                <button style={smallBtn()} onClick={() => setDetailItem(null)}>✕</button>
+                <button style={smallBtn()} onClick={() => setDetailItem(null)}>
+                  ✕
+                </button>
               </div>
             </div>
 
@@ -663,6 +872,9 @@ export default function BankInfoPage() {
               <div style={field}><div style={label}>Rekening Name</div><div style={{ fontWeight: 800, fontSize: 13 }}>{detailItem.rekeningNm || "-"}</div></div>
               <div style={field}><div style={label}>Bank</div><div style={{ fontWeight: 700, fontSize: 13 }}>{detailItem.bankNm || "-"}</div></div>
               <div style={field}><div style={label}>Rek No</div><div style={{ fontWeight: 700, fontSize: 13 }}>{detailItem.rekNo || "-"}</div></div>
+
+              <div style={field}><div style={label}>Rek Type</div><div style={{ fontWeight: 700, fontSize: 13 }}>{detailItem.rekType || "-"}</div></div>
+              <div style={field}><div style={label}>Status</div><div style={{ fontWeight: 700, fontSize: 13 }}>{String(detailItem.status || "ACTIVE")}</div></div>
               <div style={field}><div style={label}>Saldo</div><div style={{ fontWeight: 700, fontSize: 13 }}>Rp {formatIdr(detailItem.saldo)}</div></div>
 
               <div style={field}><div style={label}>ATM No</div><div style={{ fontWeight: 700, fontSize: 13 }}>{mask(detailItem.atmNo)}</div></div>
@@ -717,7 +929,9 @@ export default function BankInfoPage() {
             </div>
 
             <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button style={smallBtn()} onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button style={smallBtn()} onClick={() => setConfirmDelete(null)}>
+                Cancel
+              </button>
               <button style={smallBtn("danger")} onClick={() => doDelete(confirmDelete.id)} disabled={busy}>
                 {busy ? "Deleting..." : "Delete"}
               </button>
