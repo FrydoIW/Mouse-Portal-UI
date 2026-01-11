@@ -11,14 +11,14 @@ async function postJson(path, payload) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const msg = data?.remark || data?.message || `Request failed (${res.status})`;
+    const msg =
+      data?.remark || data?.message || `Request failed (${res.status})`;
     throw new Error(msg);
   }
 
-  // most endpoints use status: "00" for success
   if (data?.status && data.status !== "00") {
-    // Some older endpoints might use "09" for success; keep compatibility.
-    const okAlt = data.status === "09" && /success/i.test(String(data.remark || ""));
+    const okAlt =
+      data.status === "09" && /success/i.test(String(data.remark || ""));
     if (!okAlt) throw new Error(data?.remark || "Request failed");
   }
 
@@ -44,7 +44,6 @@ export async function deleteBranchBro0300(payload) {
 }
 
 export async function getAllBranchBro0400() {
-  // backend expects a body
   return postJson("/getAllBranch/bro0400", { getAllBranch: "GetAllData" });
 }
 
@@ -52,7 +51,6 @@ export async function getAllBranchBro0400() {
 // TKD MEMBER (TKDxxxx)
 // =======================
 export async function registerTkd0100(payload) {
-  // full payload from your spec
   return postJson("/register/tkd0100", payload);
 }
 

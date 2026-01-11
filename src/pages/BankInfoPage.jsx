@@ -1,9 +1,7 @@
-// src/pages/BankInfoPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getAllBranchBro0400,
-  // ATM
   addAtmAtm0100,
   getAllAtmAtm0200,
   editAtmAtm0300,
@@ -248,7 +246,6 @@ export default function BankInfoPage() {
       }
     })();
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedBranch = useMemo(() => {

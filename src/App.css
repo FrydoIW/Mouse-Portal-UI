@@ -228,7 +228,6 @@
   opacity: 0.9;
 }
 
-/* KALENDER: beda di dark/light */
 
 :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);

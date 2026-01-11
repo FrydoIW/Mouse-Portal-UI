@@ -1,4 +1,3 @@
-// src/pages/ResetPasswordPage.jsx
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
@@ -94,7 +93,6 @@ function ResetPasswordPage() {
     setSaving(true);
     try {
       const res = await resetPasswordAdm0300(email, newPassword);
-      // docs kamu: sukses reset bisa status "09"
       const ok = res?.status === "09" || res?.status === "00";
       if (!ok) {
         setError(res?.remark || "Gagal reset password");

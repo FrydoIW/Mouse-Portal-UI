@@ -319,7 +319,6 @@ function HomePage() {
     return groups;
   }, [filteredMembers]);
 
-  // for the right-side card: always show Branch Manager for selected branch (not affected by search)
   const membersInBranch = useMemo(() => {
     const id = Number(selectedBranchId);
     if (!id) return members;

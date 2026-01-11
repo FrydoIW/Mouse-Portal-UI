@@ -14,8 +14,7 @@ export default function VerifyEmailPage() {
 
   const presetEmail = location.state?.email || "";
 
-  // Default-nya halaman ini aman untuk "cek status" saja.
-  // Mode "register" akan aktif hanya kalau user baru saja register (ditandai oleh localStorage pending2faEmail).
+
   const [from, setFrom] = useState(location.state?.from || "check");
   const nextPath = location.state?.next || "/generate-2fa";
 
@@ -24,7 +23,6 @@ export default function VerifyEmailPage() {
   const [resending, setResending] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  // Gate tambahan: sebelum generate 2FA, minta user verifikasi password dulu
   const [password, setPassword] = useState("");
   const [passLoading, setPassLoading] = useState(false);
   const [passVerified, setPassVerified] = useState(false);
@@ -36,8 +34,6 @@ export default function VerifyEmailPage() {
   }, [presetEmail]);
 
   useEffect(() => {
-    // Auto-detect mode register dari localStorage
-    // (RegisterPage menyetel pending2faEmail + pending2faAt)
     const pendingEmail = localStorage.getItem("pending2faEmail") || "";
     const pendingAt = Number(localStorage.getItem("pending2faAt") || 0);
     const ageMs = Date.now() - pendingAt;
@@ -46,7 +42,6 @@ export default function VerifyEmailPage() {
     if (!location.state?.from) {
       setFrom(pendingValid ? "register" : "check");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resend = async () => {

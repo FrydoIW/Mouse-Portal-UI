@@ -1,6 +1,3 @@
-// src/api/adminClient.js
-// API client khusus flow Admin (register, email verification, 2FA, reset password, profile)
-
 const BASE_URL = "/api";
 
 async function apiFetch(path, { method = "POST", body } = {}) {
@@ -14,7 +11,6 @@ async function apiFetch(path, { method = "POST", body } = {}) {
 
   let data = null;
   try {
-    // beberapa endpoint mungkin tidak selalu mengembalikan JSON
     data = await res.json();
   } catch (_) {
     data = null;
@@ -22,7 +18,9 @@ async function apiFetch(path, { method = "POST", body } = {}) {
 
   if (!res.ok) {
     const msg =
-      data?.remark || data?.message || `Request failed with status ${res.status}`;
+      data?.remark ||
+      data?.message ||
+      `Request failed with status ${res.status}`;
     throw new Error(msg);
   }
 
@@ -33,7 +31,6 @@ async function apiFetch(path, { method = "POST", body } = {}) {
 // 1) REGISTER ADMIN (adm0100)
 // POST /api/register/adm0100
 // body: { name, address, birthDt, gender, email, password }
-// NOTE: docs kamu contoh success status = "09".
 // =======================
 export async function registerAdminAdm0100(payload) {
   return apiFetch("/register/adm0100", { method: "POST", body: payload });
@@ -103,7 +100,6 @@ export async function verify2faAdm0700(adminEmail, googleOtp) {
 // 3) RESET PASSWORD (adm0300)
 // POST /api/resetPass/adm0300
 // body: { adminEmail, newPassword }
-// NOTE: docs kamu contoh success status = "09".
 // =======================
 export async function resetPasswordAdm0300(adminEmail, newPassword) {
   return apiFetch("/resetPass/adm0300", {

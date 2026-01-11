@@ -22,7 +22,6 @@ export default function ProtectedRoute({ children }) {
 
     const onActivity = () => {
       const now = Date.now();
-      // throttle refresh to once every 30s max
       if (now - lastRefreshRef.current < 30_000) return;
       lastRefreshRef.current = now;
       refreshSession();

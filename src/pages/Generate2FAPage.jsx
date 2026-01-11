@@ -53,9 +53,7 @@ export default function Generate2FAPage() {
   };
 
   useEffect(() => {
-    // auto generate hanya jika akses valid
     if (canAccess) generate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!presetEmail || !canAccess) {
@@ -125,7 +123,6 @@ export default function Generate2FAPage() {
     );
   }
 
-  // Sisa UI ada di blok qrSrc (setelah generate sukses) atau loading/error di bawah
   return (
     <AuthLayout title="Generate 2FA" subtitle={`Memproses QR 2FA untuk: ${presetEmail}`}> 
       <div className="auth-form">

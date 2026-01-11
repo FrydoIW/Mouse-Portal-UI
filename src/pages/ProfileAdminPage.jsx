@@ -123,7 +123,6 @@ export default function ProfileAdminPage() {
       return;
     }
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSaveProfile = async () => {
@@ -201,7 +200,6 @@ export default function ProfileAdminPage() {
       const res = await checkEmailVerifiedEma0400(target);
       if (res?.status === "00") {
         setInfo(res?.remark || "Email baru sudah terverifikasi. Update sesi...");
-        // anggap backend sudah commit email baru setelah verifikasi.
         localStorage.setItem("authEmail", target);
         await load();
         return;

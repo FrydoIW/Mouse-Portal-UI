@@ -46,20 +46,15 @@ function RegisterPage() {
 
       const res = await registerAdminAdm0100(payload);
 
-      // docs kamu: success register kadang status "09"
       const ok = res?.status === "09" || res?.status === "00";
       if (!ok) {
         setError(res?.remark || "Gagal register");
         return;
       }
 
-      // Flow baru: setelah register, frontend otomatis trigger kirim email verifikasi (ema0100)
-      // Catatan: kalau backend kamu sudah otomatis mengirim email saat register, bagian ini bisa dihapus
-      // supaya tidak mengirim email 2x.
       try {
         await sendVerificationEmailEma0100(form.email);
       } catch (_) {
-        // non-blocking: tetap lanjut ke halaman verifikasi
       }
 
       setSuccess(
@@ -67,14 +62,12 @@ function RegisterPage() {
           "Registrasi berhasil. Email verifikasi sudah dikirim."
       );
 
-      // Tandai bahwa user sedang dalam proses onboarding (verifikasi email -> generate 2FA)
-      // Dipakai untuk membatasi akses generate 2FA agar tidak bisa sembarang orang memanggil endpoint hanya bermodal email.
+ 
       localStorage.setItem("pending2faEmail", form.email);
       localStorage.setItem("pending2faAt", String(Date.now()));
       localStorage.removeItem("allowGenerate2faEmail");
       localStorage.removeItem("allowGenerate2faAt");
 
-      // arahkan ke halaman cek status verifikasi email
       navigate("/verify-email", {
         state: { email: form.email, from: "register" },
       });

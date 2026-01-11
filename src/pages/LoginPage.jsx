@@ -23,7 +23,6 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      // clear stale login/session before starting a new flow
       clearSession();
 
       // ======================
@@ -130,7 +129,6 @@ function LoginPage() {
     );
   }
 
-  // UI Step 1: Email + Password
   return (
     <AuthLayout title="Welcome back 👋" subtitle="Login Admin + 2FA">
       <form className="auth-form" onSubmit={handleSubmit}>

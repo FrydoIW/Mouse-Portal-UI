@@ -1,6 +1,3 @@
-// Simple client-side session helper (20 minutes).
-// This is for UX (auto-logout / route guard). Backend must still enforce auth.
-
 export const SESSION_MINUTES = 20;
 
 const KEY_EMAIL = "authEmail";
@@ -34,7 +31,6 @@ export function getSessionEmail() {
 }
 
 export function clearSession() {
-  // keep list explicit so behavior stays predictable
   const keys = [
     KEY_EMAIL,
     KEY_EXPIRES_AT,
