@@ -118,7 +118,8 @@ export async function resetPasswordAdm0300(adminEmail, newPassword) {
 // body: { email }
 // =======================
 export async function getAdminDataAdm0600(email) {
-  return apiFetch("/getAdminData/adm0600", {
+  // NOTE: backend kamu memakai path /getData/adm0600
+  return apiFetch("/getData/adm0600", {
     method: "POST",
     body: { email },
   });

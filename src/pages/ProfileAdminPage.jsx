@@ -6,8 +6,8 @@ import {
   editEmailEma0300,
   editProfileAdm0500,
   getAdminDataAdm0600,
-  sendVerificationEmailEma0100,
 } from "../api/adminClient.js";
+import { clearSession } from "../utils/auth.js";
 
 const cardStyle = {
   maxWidth: 920,
@@ -75,7 +75,6 @@ export default function ProfileAdminPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [checkingNewEmail, setCheckingNewEmail] = useState(false);
-  const [resendingNewEmail, setResendingNewEmail] = useState(false);
 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -189,30 +188,6 @@ export default function ProfileAdminPage() {
     }
   };
 
-  const resendNewEmailVerification = async () => {
-    const target = pendingEmail || newEmail;
-    if (!target) {
-      setError("Email target belum ada");
-      return;
-    }
-    setError("");
-    setInfo("");
-    setResendingNewEmail(true);
-    try {
-      const res = await sendVerificationEmailEma0100(target);
-      const ok = res?.status === "00" || res?.status === "09";
-      if (!ok) {
-        setError(res?.remark || "Gagal kirim email verifikasi");
-        return;
-      }
-      setInfo(res?.remark || "Email verifikasi terkirim. Cek inbox/spam.");
-    } catch (e) {
-      setError(e?.message || "Gagal kirim email verifikasi");
-    } finally {
-      setResendingNewEmail(false);
-    }
-  };
-
   const checkNewEmailVerified = async () => {
     const target = pendingEmail || newEmail;
     if (!target) {
@@ -256,7 +231,7 @@ export default function ProfileAdminPage() {
         <button
           style={secondaryBtn}
           onClick={() => {
-            localStorage.removeItem("authEmail");
+            clearSession();
             navigate("/login");
           }}
         >
@@ -387,9 +362,6 @@ export default function ProfileAdminPage() {
           <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
             <button style={primaryBtn} onClick={onRequestEmailChange} disabled={savingEmail}>
               {savingEmail ? "Memproses..." : "Request Ubah Email"}
-            </button>
-            <button style={secondaryBtn} onClick={resendNewEmailVerification} disabled={resendingNewEmail}>
-              {resendingNewEmail ? "Mengirim ulang..." : "Kirim ulang verifikasi"}
             </button>
             <button style={secondaryBtn} onClick={checkNewEmailVerified} disabled={checkingNewEmail}>
               {checkingNewEmail ? "Mengecek..." : "Sudah Verifikasi"}

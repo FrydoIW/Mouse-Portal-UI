@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
 import { verify2faAdm0700, verifyPasswordAdm0400 } from "../api/adminClient.js";
+import { clearSession, startSession } from "../utils/auth.js";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      localStorage.removeItem("authEmail");
+      // clear stale login/session before starting a new flow
+      clearSession();
 
       // ======================
       // STEP 1: VERIFY PASSWORD (adm0400)
@@ -45,16 +47,17 @@ function LoginPage() {
       // ======================
       const res = await verify2faAdm0700(email, otp);
       if (res?.status === "00") {
-        localStorage.setItem("authEmail", email);
+        // start 20-minute session
+        startSession(email);
         navigate("/dashboard");
         return;
       }
 
       setError(res?.remark || "OTP tidak valid");
-      localStorage.removeItem("authEmail");
+      clearSession();
     } catch (err) {
       setError(err?.message || "Terjadi kesalahan saat login");
-      localStorage.removeItem("authEmail");
+      clearSession();
     } finally {
       setLoading(false);
     }

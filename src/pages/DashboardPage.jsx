@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllAtmAtm0200 } from "../api/tikusClient.js";
+import { clearSession } from "../utils/auth.js";
 
 const primaryCtaStyle = {
   padding: "0.75rem 1.4rem",
@@ -56,7 +57,9 @@ function Skeleton({ h = 16, w = "100%", r = 12, style = {} }) {
 
 // ===== Donut Chart =====
 function DonutChart({ items, size = 220 }) {
-  const total = items.reduce((a, x) => a + (Number(x.value) || 0), 0) || 1;
+  const rawTotal = items.reduce((a, x) => a + (Number(x.value) || 0), 0);
+  const total = rawTotal;
+  const totalForCalc = rawTotal || 1;
 
   const stroke = 16;
   const r = (size - stroke) / 2;
@@ -87,7 +90,7 @@ function DonutChart({ items, size = 220 }) {
 
         {items.map((it, idx) => {
           const v = Number(it.value) || 0;
-          const frac = v / total;
+          const frac = v / totalForCalc;
           const dash = frac * c;
 
           const dasharray = `${dash} ${c - dash}`;
@@ -508,12 +511,7 @@ export default function DashboardPage() {
   const toggleTheme = () => setTheme((p) => (p === "dark" ? "light" : "dark"));
 
   const handleLogout = () => {
-    localStorage.removeItem("authEmail");
-    localStorage.removeItem("token");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("isLogin");
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("user");
+    clearSession();
     navigate("/login");
   };
 
@@ -526,7 +524,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await getAllAtmAtm0200({ getAllData: "" });
+      const res = await getAllAtmAtm0200();
       const list = Array.isArray(res?.resultList) ? res.resultList : [];
       setRows(list);
       setLastRefresh(new Date().toLocaleString("id-ID"));
@@ -541,54 +539,57 @@ export default function DashboardPage() {
     fetchAll();
   }, []);
 
-  const summary = useMemo(() => {
-    const count = rows.length;
-    const total = rows.reduce((a, r) => a + Number(r.amount ?? 0), 0);
-    const avg = count ? total / count : 0;
+const summary = useMemo(() => {
+  const count = rows.length;
+  const total = rows.reduce((a, r) => a + Number(r.saldo ?? 0), 0);
+  const avg = count ? total / count : 0;
 
-    const bankCount = rows.reduce((acc, r) => {
-      const k = (r.bank || "-").toUpperCase();
-      acc[k] = (acc[k] || 0) + 1;
-      return acc;
-    }, {});
-    const topBank = Object.entries(bankCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+  const bankCount = rows.reduce((acc, r) => {
+    const k = (r.bankNm || "-").toUpperCase();
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const topBank = Object.entries(bankCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
 
-    const maxRow = [...rows].sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0))[0];
+  const maxRow = [...rows].sort((a, b) => Number(b.saldo ?? 0) - Number(a.saldo ?? 0))[0];
 
-    return {
-      count,
-      total,
-      avg,
-      topBank,
-      maxOwner: maxRow?.owner || "-",
-      maxAmount: Number(maxRow?.amount ?? 0),
-    };
-  }, [rows]);
+  return {
+    count,
+    total,
+    avg,
+    topBank,
+    maxOwner: maxRow?.rekeningNm || "-",
+    maxAmount: Number(maxRow?.saldo ?? 0),
+  };
+}, [rows]);
+
 
   const top5 = useMemo(() => {
-    return [...rows]
-      .sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0))
-      .slice(0, 5)
-      .map((r) => ({
-        id: r.id,
-        label: `${r.owner} • ${r.bank}`,
-        value: Number(r.amount ?? 0),
-        bank: (r.bank || "-").toUpperCase(),
-        nomorRekening: r.nomorRekening,
-      }));
-  }, [rows]);
+  return [...rows]
+    .sort((a, b) => Number(b.saldo ?? 0) - Number(a.saldo ?? 0))
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      label: `${r.rekeningNm || "-"} • ${r.bankNm || "-"}`,
+      value: Number(r.saldo ?? 0),
+      bank: (r.bankNm || "-").toUpperCase(),
+      nomorRekening: r.rekNo,
+    }));
+}, [rows]);
 
-  const donutData = useMemo(() => {
-    const byBank = rows.reduce((acc, r) => {
-      const bank = (r.bank || "-").toUpperCase();
-      acc[bank] = (acc[bank] || 0) + Number(r.amount ?? 0);
-      return acc;
-    }, {});
-    return Object.entries(byBank)
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, [rows]);
+
+const donutData = useMemo(() => {
+  const byBank = rows.reduce((acc, r) => {
+    const bank = (r.bankNm || "-").toUpperCase();
+    acc[bank] = (acc[bank] || 0) + Number(r.saldo ?? 0);
+    return acc;
+  }, {});
+  return Object.entries(byBank)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+}, [rows]);
+
 
   // NEW: series for line & area (based on top5)
   const lineSeries = useMemo(() => {
@@ -830,6 +831,9 @@ export default function DashboardPage() {
             <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>
               BANK INFO
             </button>
+            <button style={pillBtn(false)} onClick={() => navigate("/expense")}>
+              EXPENSE
+            </button>
             <button style={{ ...pillBtn(true), ...primaryCtaStyle, padding: "10px 16px" }} disabled>
               DASHBOARD
             </button>
@@ -910,7 +914,22 @@ export default function DashboardPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, marginTop: 14 }}>
           <div style={card}>
-            <div style={sectionTitle}>BALANCE BY BANK</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <div style={sectionTitle}>BALANCE</div>
+              <div
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(148,163,184,0.22)",
+                  background: "rgba(0,0,0,0.18)",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  opacity: 0.9,
+                }}
+              >
+                by Bank
+              </div>
+            </div>
             <div style={{ marginTop: 10 }}>
               <DonutChart items={donutData.length ? donutData : [{ label: "N/A", value: 0 }]} />
             </div>

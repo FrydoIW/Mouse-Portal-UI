@@ -1,1991 +1,1004 @@
 // src/pages/HomePage.jsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getAllDataTkd0400,
-  updateTkd0500,
-  deleteTkd0600,
+  // BRANCH
+  getAllBranchBro0400,
+  insertBranchBro0100,
+  editBranchBro0200,
+  deleteBranchBro0300,
+  // TKD
+  getAllDataTkd0200,
   registerTkd0100,
+  updateTkd0300,
+  deleteTkd0400,
 } from "../api/tikusClient.js";
+import { clearSession } from "../utils/auth.js";
+
+const POSITION_OPTIONS = [
+  "Branch Manager",
+  "Leader",
+  "Marketing",
+  "Costumer Service",
+];
+
+function normalizePosition(pos) {
+  const p = String(pos || "").trim().toLowerCase();
+  if (!p) return "";
+  if (p === "branch manager") return "Branch Manager";
+  if (p === "leader") return "Leader";
+  if (p === "marketing") return "Marketing";
+  if (p === "costumer service") return "Costumer Service";
+  if (p === "customer service") return "Costumer Service";
+  return pos;
+}
+
+function formatIdr(val) {
+  const n = Number(val ?? 0);
+  if (Number.isNaN(n)) return "-";
+  return n.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatThb(val) {
+  const n = Number(val ?? 0);
+  if (Number.isNaN(n)) return "-";
+  return n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function toDateInput(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+const primaryCtaStyle = {
+  padding: "0.75rem 1.4rem",
+  borderRadius: "999px",
+  border: "none",
+  background: "linear-gradient(135deg, #38bdf8 0%, #6366f1 55%, #22c55e 100%)",
+  color: "#0b1120",
+  fontSize: "0.9rem",
+  fontWeight: 700,
+  cursor: "pointer",
+  boxShadow: "0 18px 40px rgba(15, 23, 42, 0.65)",
+};
+
+const secondaryCtaStyle = {
+  padding: "0.65rem 1.2rem",
+  borderRadius: "999px",
+  border: "1px solid var(--card-border)",
+  background: "transparent",
+  color: "var(--text)",
+  fontSize: "0.9rem",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const pillBtn = (active) => ({
+  padding: "10px 16px",
+  borderRadius: 999,
+  border: active ? "none" : "1px solid var(--card-border)",
+  background: active ? "linear-gradient(135deg, #38bdf8 0%, #6366f1 55%, #22c55e 100%)" : "transparent",
+  color: active ? "#071021" : "var(--text)",
+  fontWeight: 700,
+  cursor: active ? "default" : "pointer",
+  boxShadow: active ? "0 18px 40px rgba(15, 23, 42, 0.55)" : "none",
+});
+
+const card = {
+  borderRadius: 18,
+  border: "1px solid var(--card-border)",
+  background: "var(--card-bg)",
+  backdropFilter: "blur(14px)",
+  padding: 16,
+  boxShadow: "0 30px 60px rgba(2, 6, 23, 0.55)",
+};
+
+const input = {
+  width: "100%",
+  padding: "12px 12px",
+  borderRadius: 14,
+  border: "1px solid var(--card-border)",
+  background: "rgba(2, 6, 23, 0.25)",
+  color: "var(--text)",
+  outline: "none",
+};
+
+const selectStyle = {
+  ...input,
+  padding: "12px 12px",
+};
+
+const smallBtn = (variant = "default") => ({
+  padding: "10px 14px",
+  borderRadius: 999,
+  border: variant === "danger" ? "1px solid rgba(239,68,68,0.45)" : "1px solid var(--card-border)",
+  background:
+    variant === "primary"
+      ? "linear-gradient(135deg, #38bdf8 0%, #6366f1 55%, #22c55e 100%)"
+      : variant === "danger"
+      ? "rgba(239,68,68,0.10)"
+      : "transparent",
+  color: variant === "primary" ? "#071021" : "var(--text)",
+  fontWeight: 700,
+  cursor: "pointer",
+});
+
+const badge = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 12px",
+  borderRadius: 999,
+  border: "1px solid var(--card-border)",
+  background: "rgba(2, 6, 23, 0.25)",
+  color: "var(--text)",
+  fontWeight: 700,
+  fontSize: 12.5,
+};
+
+const sectionTitle = { fontSize: 18, fontWeight: 900, letterSpacing: 0.5 };
+const sectionSub = { marginTop: 6, color: "var(--card-text-sub)", fontSize: 13.5 };
+
+const modalOverlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 18,
+  zIndex: 999,
+};
+
+const modalCard = {
+  width: "100%",
+  maxWidth: 820,
+  borderRadius: 18,
+  border: "1px solid var(--card-border)",
+  background: "var(--card-bg)",
+  backdropFilter: "blur(14px)",
+  padding: 14,
+};
+
+const grid2 = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const grid3 = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const field = { display: "flex", flexDirection: "column", gap: 6 };
+
+const label = { fontSize: 12.5, color: "var(--card-text-sub)", fontWeight: 700 };
 
 function HomePage() {
   const navigate = useNavigate();
-  const email = localStorage.getItem("authEmail");
+  const email = localStorage.getItem("authEmail") || "";
 
-  // THEME (dark / light)
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("tk-theme") || "dark"
-  );
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  // THEME
+  const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
     localStorage.setItem("tk-theme", theme);
   }, [theme]);
+  const toggleTheme = () => setTheme((p) => (p === "dark" ? "light" : "dark"));
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
-
-  // DATA STATE
+  // DATA
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [resultList, setResultList] = useState([]);
 
-  // EDIT STATE
-  const [editingItem, setEditingItem] = useState(null);
-  const [editOriginal, setEditOriginal] = useState(null);
-  const [editForm, setEditForm] = useState({
+  const [branches, setBranches] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState(() => {
+    const v = localStorage.getItem("tk-branchId");
+    return v ? Number(v) : "";
+  });
+
+  const [members, setMembers] = useState([]);
+
+  // UI
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toast, setToast] = useState(null); // {type,text}
+
+  // Branch modals
+  const [branchModal, setBranchModal] = useState(null); // {mode:'add'|'edit', name:''}
+  const [branchName, setBranchName] = useState("");
+  const [branchBusy, setBranchBusy] = useState(false);
+
+  // Member modals
+  const emptyMemberForm = useMemo(() => ({
+    refNo: "",
+    branchId: "",
     name: "",
     address: "",
     gender: "",
-    birthDate: "",
-    position: "",
     email: "",
-    salaryAmount: "",
-
+    position: "",
     joinWorkDt: "",
     religion: "",
     workingWeb: "",
-
+    cuti: "",
+    salaryAmt: "",
+    remark: "",
     foodAmount: "",
     thr: "",
     bonus: "",
-    ticketAmt: "",
-    ticketBuyDt: "",
     noRekening: "",
     lastSalaryIncreaseDt: "",
-  });
+  }), []);
 
-  const [isSaving, setIsSaving] = useState(false);
+  const [memberModal, setMemberModal] = useState(null); // {mode:'add'|'edit', item}
+  const [memberForm, setMemberForm] = useState(emptyMemberForm);
+  const [memberBusy, setMemberBusy] = useState(false);
 
-  // DELETE STATE
-  const [deletingEmail, setDeletingEmail] = useState("");
-  const [confirmDeleteItem, setConfirmDeleteItem] = useState(null);
+  // expand/collapse detail per member (key: refNo)
+  const [expandedMembers, setExpandedMembers] = useState(() => ({}));
 
-  // GLOBAL ACTION MESSAGE
-  const [actionMessage, setActionMessage] = useState(null); // { type, text }
+  const [confirmDelete, setConfirmDelete] = useState(null); // {type:'branch'|'member', payload}
 
-  const [lastTkd0100Request, setLastTkd0100Request] = useState(null);
-  const [lastTkd0100Response, setLastTkd0100Response] = useState(null);
+  async function reloadBranches() {
+    const res = await getAllBranchBro0400();
+    const list = Array.isArray(res?.resultList) ? res.resultList : [];
+    setBranches(list);
+    return list;
+  }
 
+  async function reloadMembers() {
+    const res = await getAllDataTkd0200();
+    const list = Array.isArray(res?.resultList) ? res.resultList : [];
+    // normalize positions for consistent grouping
+    const normalized = list.map((x) => ({ ...x, position: normalizePosition(x.position) }));
+    setMembers(normalized);
+    return normalized;
+  }
 
-  // SEARCH STATE
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // ADD USER STATE
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addForm, setAddForm] = useState({
-  name: "",
-  address: "",
-  gender: "",
-  birthDate: "",
-  position: "",
-  email: "",
-  salaryAmount: "",
-
-  openPurpose: "02",
-  joinWorkDt: "",
-  religion: "",
-  workingWeb: "",
-
-  foodAmount: "",
-  thr: "",
-  bonus: "",
-  ticketAmt: "",
-  ticketBuyDt: "",
-  noRekening: "",
-  lastSalaryIncreaseDt: "",
-});
-
-  const [isAdding, setIsAdding] = useState(false);
-
-  // FETCH DATA
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchData() {
+    let alive = true;
+    (async () => {
       try {
         setLoading(true);
         setError("");
-        const data = await getAllDataTkd0400();
-        if (!isMounted) return;
-
-        const list = Array.isArray(data?.resultList) ? data.resultList : [];
-        setResultList(list);
-      } catch (err) {
-        if (!isMounted) return;
-        setError(err?.message || "Gagal mengambil data TKD0400");
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+        const [b] = await Promise.all([reloadBranches(), reloadMembers()]);
+        if (!alive) return;
+        const firstId = b?.[0]?.branchId ?? "";
+        const stored = localStorage.getItem("tk-branchId");
+        const pick = stored ? Number(stored) : firstId;
+        if (pick && !selectedBranchId) {
+          setSelectedBranchId(pick);
+          localStorage.setItem("tk-branchId", String(pick));
         }
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Gagal mengambil data");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
       }
-    }
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-    };
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const reloadList = async () => {
-    const data = await getAllDataTkd0400();
-    const list = Array.isArray(data?.resultList) ? data.resultList : [];
-    setResultList(list);
-  };
+  const selectedBranch = useMemo(() => {
+    const id = Number(selectedBranchId);
+    return branches.find((b) => Number(b.branchId) === id) || null;
+  }, [branches, selectedBranchId]);
+
+  const filteredMembers = useMemo(() => {
+    const id = Number(selectedBranchId);
+    const q = searchQuery.trim().toLowerCase();
+    return members.filter((m) => {
+      if (id && Number(m.branchId) !== id) return false;
+      if (!q) return true;
+      return (
+        String(m.name || "").toLowerCase().includes(q) ||
+        String(m.email || "").toLowerCase().includes(q) ||
+        String(m.position || "").toLowerCase().includes(q)
+      );
+    });
+  }, [members, searchQuery, selectedBranchId]);
+
+  const grouped = useMemo(() => {
+    const groups = new Map();
+    for (const pos of POSITION_OPTIONS) groups.set(pos, []);
+    groups.set("Other", []);
+    for (const m of filteredMembers) {
+      const p = POSITION_OPTIONS.includes(m.position) ? m.position : "Other";
+      groups.get(p).push(m);
+    }
+    return groups;
+  }, [filteredMembers]);
+
+  // for the right-side card: always show Branch Manager for selected branch (not affected by search)
+  const membersInBranch = useMemo(() => {
+    const id = Number(selectedBranchId);
+    if (!id) return members;
+    return members.filter((m) => Number(m.branchId) === id);
+  }, [members, selectedBranchId]);
+
+  const branchManagerCard = useMemo(() => {
+    const list = membersInBranch
+      .map((x) => ({ ...x, position: normalizePosition(x.position) }))
+      .filter((x) => x.position === "Branch Manager");
+    return list[0] || null;
+  }, [membersInBranch]);
+
+  const summary = useMemo(() => {
+    const count = filteredMembers.length;
+    const totalSalary = filteredMembers.reduce((acc, x) => acc + Number(x.salaryAmt ?? x.salaryAmt ?? 0), 0);
+    const totalThr = filteredMembers.reduce((acc, x) => acc + Number(x.thr ?? 0), 0);
+    return { count, totalSalary, totalThr };
+  }, [filteredMembers]);
 
   const handleLogout = () => {
-    localStorage.removeItem("authEmail");
+    clearSession();
     navigate("/login");
   };
 
-  const handleScrollToData = () => {
-    const el = document.getElementById("tkd0400-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const pickBranch = (val) => {
+    setSelectedBranchId(val);
+    if (val) localStorage.setItem("tk-branchId", String(val));
+  };
+
+  // Branch actions
+  const openAddBranch = () => {
+    setBranchName("");
+    setBranchModal({ mode: "add" });
+  };
+
+  const openEditBranch = () => {
+    if (!selectedBranch) {
+      setToast({ type: "error", text: "Pilih branch dulu." });
+      return;
     }
+    setBranchName(selectedBranch.branchName || "");
+    setBranchModal({ mode: "edit" });
   };
 
-  const totalTrx = useMemo(
-    () =>
-      resultList.reduce((sum, item) => {
-        const value = Number(item?.trxAmt || 0);
-        return Number.isNaN(value) ? sum : sum + value;
-      }, 0),
-    [resultList]
-  );
-
-  // FILTERED LIST (SEARCH)
-  const filteredList = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return resultList;
-
-    return resultList.filter((item) => {
-      const name = (item.name || "").toLowerCase();
-      const emailUser = (item.email || "").toLowerCase();
-      const position = (item.position || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        emailUser.includes(q) ||
-        position.includes(q)
-      );
-    });
-  }, [resultList, searchQuery]);
-
-  const formatIdr = (value) =>
-    Number(value || 0).toLocaleString("id-ID", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-  const toDateInput = (v) => {
-  if (!v) return "";
-  return String(v).slice(0, 10); // "YYYY-MM-DD"
+  const askDeleteBranch = () => {
+    if (!selectedBranch) {
+      setToast({ type: "error", text: "Pilih branch dulu." });
+      return;
+    }
+    setConfirmDelete({ type: "branch", payload: { branchId: selectedBranch.branchId, branchName: selectedBranch.branchName } });
   };
 
-  // ====== EDIT HANDLER ======
-  const openEditModal = (item) => {
-    setEditingItem(item);
-    setEditOriginal(item);
-
-    setEditForm({
-      name: item.name || "",
-      address: item.address || "",
-      gender: item.gender || "",
-      birthDate: toDateInput(item.birthDate),
-      position: item.position || "",
-      email: item.email || "",
-      salaryAmount: item.trxAmt ?? 0,
-
-      joinWorkDt: toDateInput(item.joinWorkDt),
-      religion: item.religion || "",
-      workingWeb: item.workingWeb || "",
-
-      // TKD0400 biasanya: foodAmt, tiketAmt, tiketBuyDt
-      foodAmount: item.foodAmt ?? item.foodAmount ?? 0,
-      thr: item.thr ?? 0,
-      bonus: item.bonus ?? 0,
-      ticketAmt: item.tiketAmt ?? item.ticketAmt ?? 0,
-      ticketBuyDt: toDateInput(item.tiketBuyDt ?? item.ticketBuyDt),
-      noRekening: item.noRekening || "",
-      lastSalaryIncreaseDt: toDateInput(item.lastSalaryIncreaseDt),
-    });
-
-    setActionMessage(null);
-  };
-
-
-  const closeEditModal = () => {
-    if (isSaving) return;
-    setEditingItem(null);
-  };
-
-  const handleEditChange = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    if (!editOriginal) return;
-
-    setIsSaving(true);
-    setActionMessage(null);
+  const submitBranch = async () => {
+    const name = branchName.trim();
+    if (!name) return setToast({ type: "error", text: "Nama branch wajib diisi." });
 
     try {
-      const payload = { oldEmail: editOriginal.email };
-
-      const addIfChangedStr = (key, newVal, oldVal) => {
-        const nv = (newVal ?? "").toString().trim();
-        const ov = (oldVal ?? "").toString().trim();
-        if (nv !== "" && nv !== ov) payload[key] = nv;
-      };
-
-      const addIfChangedNum = (key, newVal, oldVal) => {
-        if (newVal === "" || newVal === null || newVal === undefined) return;
-        const nv = Number(newVal);
-        const ov = Number(oldVal ?? 0);
-        if (!Number.isNaN(nv) && nv !== ov) payload[key] = nv;
-      };
-
-      const addIfChangedDate = (key, newVal, oldVal) => {
-        const nv = (newVal ?? "").toString().slice(0, 10);
-        const ov = toDateInput(oldVal);
-        if (nv !== "" && nv !== ov) payload[key] = nv;
-      };
-
-      addIfChangedStr("name", editForm.name, editOriginal.name);
-      addIfChangedStr("address", editForm.address, editOriginal.address);
-      addIfChangedStr("gender", editForm.gender, editOriginal.gender);
-      addIfChangedStr("position", editForm.position, editOriginal.position);
-      addIfChangedStr("email", editForm.email, editOriginal.email);
-          
-      // DTO: birthDt
-      addIfChangedDate("birthDt", editForm.birthDate, editOriginal.birthDt ?? editOriginal.birthDate);
-          
-      addIfChangedDate("joinWorkDt", editForm.joinWorkDt, editOriginal.joinWorkDt);
-      addIfChangedStr("religion", editForm.religion, editOriginal.religion);
-      addIfChangedStr("workingWeb", editForm.workingWeb, editOriginal.workingWeb);
-          
-      addIfChangedNum("salaryAmount", editForm.salaryAmount, editOriginal.trxAmt ?? editOriginal.salaryAmount);
-      addIfChangedNum("foodAmount", editForm.foodAmount, editOriginal.foodAmt ?? editOriginal.foodAmount);
-      addIfChangedNum("thr", editForm.thr, editOriginal.thr);
-      addIfChangedNum("bonus", editForm.bonus, editOriginal.bonus);
-          
-      addIfChangedNum("ticketAmt", editForm.ticketAmt, editOriginal.ticketAmt ?? editOriginal.tiketAmt);
-      addIfChangedDate("ticketBuyDt", editForm.ticketBuyDt, editOriginal.ticketBuyDt ?? editOriginal.tiketBuyDt);
-          
-      addIfChangedStr("noRekening", editForm.noRekening, editOriginal.noRekening);
-      addIfChangedDate("lastSalaryIncreaseDt", editForm.lastSalaryIncreaseDt, editOriginal.lastSalaryIncreaseDt);
-
-      // kalau user gak ubah apa-apa, jangan pukul backend
-      if (Object.keys(payload).length === 1) {
-        setActionMessage({ type: "error", text: "Tidak ada perubahan untuk disimpan." });
-        return;
+      setBranchBusy(true);
+      if (branchModal?.mode === "add") {
+        await insertBranchBro0100({ branchName: name });
+        setToast({ type: "success", text: "Branch berhasil ditambahkan." });
+      } else if (branchModal?.mode === "edit") {
+        await editBranchBro0200({ branchId: selectedBranch?.branchId, branchName: name });
+        setToast({ type: "success", text: "Branch berhasil diubah." });
       }
-
-      const res = await updateTkd0500(payload);
-
-      if (res?.status && res.status !== "00") {
-        throw new Error(res.remark || "Gagal update data");
+      setBranchModal(null);
+      const b = await reloadBranches();
+      // keep selection
+      if (branchModal?.mode === "add") {
+        const found = b.find((x) => String(x.branchName).toLowerCase() === name.toLowerCase());
+        if (found) pickBranch(found.branchId);
       }
-
-      setActionMessage({
-        type: "success",
-        text: res?.remark || "Berhasil update data user.",
-      });
-
-      setEditingItem(null);
-      setEditOriginal(null);
-      await reloadList();
-    } catch (err) {
-      setActionMessage({
-        type: "error",
-        text: err?.message || "Terjadi kesalahan saat update data.",
-      });
+    } catch (e) {
+      setToast({ type: "error", text: e?.message || "Gagal proses branch" });
     } finally {
-      setIsSaving(false);
+      setBranchBusy(false);
     }
-};
-
-
-  // ====== ADD USER HANDLER ======
-  const openAddModal = () => {
-  setAddForm({
-    name: "",
-    address: "",
-    gender: "",
-    birthDate: "",
-    position: "",
-    email: "",
-    salaryAmount: "",
-
-    openPurpose: "02",
-    joinWorkDt: "",
-    religion: "",
-    workingWeb: "",
-
-    foodAmount: "",
-    thr: "",
-    bonus: "",
-    ticketAmt: "",
-    ticketBuyDt: "",
-    noRekening: "",
-    lastSalaryIncreaseDt: "",
-  });
-
-  setLastTkd0100Request(null);
-  setLastTkd0100Response(null);
-  setActionMessage(null);
-  setIsAddModalOpen(true);
-};
-
-  const closeAddModal = () => {
-    if (isAdding) return;
-    setIsAddModalOpen(false);
   };
 
-  const handleAddChange = (field, value) => {
-    setAddForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveAdd = async (e) => {
-    e.preventDefault();
-    setIsAdding(true);
-    setActionMessage(null);
-
+  const doDeleteBranch = async (branchId) => {
     try {
-      const payload = {
-      name: addForm.name,
-      address: addForm.address,
-      gender: addForm.gender,
-      birthDate: addForm.birthDate || null,
-      position: addForm.position,
-      email: addForm.email,
+      setBranchBusy(true);
+      await deleteBranchBro0300({ branchId });
+      setToast({ type: "success", text: "Branch berhasil dihapus." });
+      setConfirmDelete(null);
+      const b = await reloadBranches();
+      const nextId = b?.[0]?.branchId ?? "";
+      pickBranch(nextId);
+    } catch (e) {
+      setToast({ type: "error", text: e?.message || "Gagal hapus branch" });
+    } finally {
+      setBranchBusy(false);
+    }
+  };
 
-      passwordCredential: null,
-      salaryAmount: Number(addForm.salaryAmount) || 0,
+  // Member actions
+  const openAddMember = () => {
+    if (!selectedBranchId) {
+      setToast({ type: "error", text: "Pilih branch dulu sebelum tambah user." });
+      return;
+    }
+    setMemberForm({ ...emptyMemberForm, branchId: Number(selectedBranchId), position: "Costumer Service" });
+    setMemberModal({ mode: "add" });
+  };
 
-      openPurpose: addForm.openPurpose || "02",
-      joinWorkDt: addForm.joinWorkDt || null,
-      religion: addForm.religion || null,
-      workingWeb: addForm.workingWeb || null,
-
-      foodAmount: Number(addForm.foodAmount) || 0,
-      thr: Number(addForm.thr) || 0,
-      bonus: Number(addForm.bonus) || 0,
-      ticketAmt: Number(addForm.ticketAmt) || 0,
-      ticketBuyDt: addForm.ticketBuyDt || null,
-      noRekening: addForm.noRekening || null,
-      lastSalaryIncreaseDt: addForm.lastSalaryIncreaseDt || null,
-    };
-
-    setLastTkd0100Request(payload);
-
-    const res = await registerTkd0100(payload);
-
-    // format response tetap kecil (status/remark/qrBase64)
-    setLastTkd0100Response({
-      status: res?.status ?? "00",
-      remark: res?.remark ?? "ALL DATA INSERTED",
-      qrBase64: res?.qrBase64 ?? null,
+  const openEditMember = (item) => {
+    setMemberForm({
+      ...emptyMemberForm,
+      ...item,
+      branchId: Number(item.branchId ?? selectedBranchId),
+      salaryAmt: item.salaryAmt ?? item.salaryAmt ?? "",
+      foodAmount: item.foodAmount ?? item.foodAmount ?? "",
     });
+    setMemberModal({ mode: "edit", item });
+  };
 
+  const askDeleteMember = (item) => {
+    setConfirmDelete({ type: "member", payload: { refNo: item.refNo, name: item.name, email: item.email } });
+  };
 
-      if (res?.status && res.status !== "00") {
-        throw new Error(res.remark || "Gagal menambahkan user");
-      }
+  const submitMember = async () => {
+    const payload = { ...memberForm };
+    payload.branchId = Number(payload.branchId || selectedBranchId || 0);
 
-      setActionMessage({
-        type: "success",
-        text: res?.remark || "User berhasil ditambahkan.",
-      });
-      setIsAddModalOpen(false);
-      await reloadList();
-    } catch (err) {
-      setActionMessage({
-        type: "error",
-        text: err?.message || "Terjadi kesalahan saat menambahkan user.",
-      });
-    } finally {
-      setIsAdding(false);
+    // validation minimal
+    if (!payload.branchId) return setToast({ type: "error", text: "Branch wajib dipilih." });
+    if (!payload.name.trim()) return setToast({ type: "error", text: "Nama wajib diisi." });
+    if (!payload.email.trim()) return setToast({ type: "error", text: "Email wajib diisi." });
+    if (!POSITION_OPTIONS.includes(payload.position)) return setToast({ type: "error", text: "Position tidak valid." });
+
+    // cast numbers
+    const numFields = ["salaryAmt", "foodAmount", "thr", "bonus"];
+    for (const k of numFields) {
+      if (payload[k] === "") continue;
+      const n = Number(payload[k]);
+      if (!Number.isNaN(n)) payload[k] = n;
     }
-  };
-
-  // ====== DELETE HANDLER ======
-  const handleDeleteClick = (item) => {
-    setConfirmDeleteItem(item);
-    setActionMessage(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteItem) return;
-    const item = confirmDeleteItem;
-
-    setDeletingEmail(item.email);
-    setActionMessage(null);
 
     try {
-      const res = await deleteTkd0600({
-        email: item.email,
-        status: "09",
-      });
-
-      if (res?.status && res.status !== "00") {
-        throw new Error(res.remark || "Gagal menghapus data");
+      setMemberBusy(true);
+      if (memberModal?.mode === "add") {
+        // register endpoint does not need refNo
+        delete payload.refNo;
+        await registerTkd0100(payload);
+        setToast({ type: "success", text: "User berhasil ditambahkan." });
+      } else {
+        await updateTkd0300(payload);
+        setToast({ type: "success", text: "User berhasil diupdate." });
       }
-
-      setActionMessage({
-        type: "success",
-        text: res?.remark || "Data berhasil dihapus.",
-      });
-      setConfirmDeleteItem(null);
-      await reloadList();
-    } catch (err) {
-      setActionMessage({
-        type: "error",
-        text: err?.message || "Terjadi kesalahan saat menghapus data.",
-      });
+      setMemberModal(null);
+      await reloadMembers();
+    } catch (e) {
+      setToast({ type: "error", text: e?.message || "Gagal simpan user" });
     } finally {
-      setDeletingEmail("");
+      setMemberBusy(false);
     }
   };
 
-  const handleCancelDelete = () => {
-    setConfirmDeleteItem(null);
+  const doDeleteMember = async (refNo) => {
+    try {
+      setMemberBusy(true);
+      await deleteTkd0400({ refNo });
+      setToast({ type: "success", text: "User berhasil dihapus." });
+      setConfirmDelete(null);
+      await reloadMembers();
+    } catch (e) {
+      setToast({ type: "error", text: e?.message || "Gagal hapus user" });
+    } finally {
+      setMemberBusy(false);
+    }
   };
 
-  // ====== STYLING ======
- const pageStyle = {
-  minHeight: "100vh",
-  color: "var(--card-text-main)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "2.5rem",
-};
-
-  const topBarStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "1.5rem",
-  };
-
-  const brandWrapperStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-  };
-
-  const logoCircleStyle = {
-    width: "40px",
-    height: "40px",
-    borderRadius: "999px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background:
-      "radial-gradient(circle at 30% 0, #e0f2fe 0, #2563eb 40%, #0b1120 100%)",
-    color: "#f9fafb",
-    fontSize: "1.15rem",
-    fontWeight: 700,
-    letterSpacing: "0.06em",
-    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.6)",
-  };
-
-  const brandTitleStyle = {
-    fontSize: "1.15rem",
-    fontWeight: 600,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-  };
-
-  const brandSubtitleStyle = {
-    fontSize: "0.8rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const topRightStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "1rem",
-  };
-
-  const welcomeTextStyle = {
-    fontSize: "0.9rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const themeToggleStyle = {
-    padding: "0.25rem 0.6rem",
-    borderRadius: "999px",
-    border: "1px solid rgba(148,163,184,0.6)",
-    background: "var(--toggle-bg)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.35rem",
-    fontSize: "0.75rem",
-    color: "var(--toggle-text)",
-    cursor: "pointer",
-    backdropFilter: "blur(12px)",
-  };
-
-  const themeDotStyle = {
-    width: "0.6rem",
-    height: "0.6rem",
-    borderRadius: "999px",
-  };
-
-  const logoutButtonStyle = {
-    padding: "0.55rem 1rem",
-    borderRadius: "999px",
-    background: "rgba(15, 23, 42, 0.85)",
-    border: "1px solid rgba(148, 163, 184, 0.5)",
-    color: "#f9fafb",
-    fontSize: "0.85rem",
-    fontWeight: 500,
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.4rem",
-    backdropFilter: "blur(16px)",
-  };
-
-  const heroSectionStyle = {
-    display: "flex",
-    gap: "2.5rem",
-    alignItems: "stretch",
-    flexWrap: "wrap",
-  };
-
-  const heroTextColStyle = {
-    flex: "1.2 1 260px",
-    maxWidth: "640px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-  };
-
-  const heroEyebrowStyle = {
-    fontSize: "0.8rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.16em",
-    color: "var(--card-text-sub)",
-  };
-
-  const heroTitleStyle = {
-    fontSize: "2.4rem",
-    lineHeight: 1.15,
-    fontWeight: 700,
-  };
-
-  const heroTitleAccentStyle = {
-    color: "#38bdf8",
-  };
-
-  const heroSubtitleStyle = {
-    fontSize: "0.95rem",
-    color: "var(--card-text-sub)",
-    maxWidth: "32rem",
-  };
-
-  const heroActionsStyle = {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "0.75rem",
-    marginTop: "0.5rem",
-  };
-
-  const primaryCtaStyle = {
-    padding: "0.75rem 1.4rem",
-    borderRadius: "999px",
-    border: "none",
-    background:
-      "linear-gradient(135deg, #3b82f6 0%, #22c55e 40%, #06b6d4 100%)",
-    color: "#0b1120",
-    fontSize: "0.9rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.65)",
-  };
-
-  const secondaryCtaStyle = {
-    padding: "0.7rem 1.3rem",
-    borderRadius: "999px",
-    border: "1px solid rgba(148, 163, 184, 0.6)",
-    background: "rgba(15, 23, 42, 0.75)",
-    color: "#e5e7eb",
-    fontSize: "0.9rem",
-    fontWeight: 500,
-    cursor: "pointer",
-    backdropFilter: "blur(14px)",
-  };
-
-  const heroStatsRowStyle = {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "1.2rem",
-    marginTop: "0.5rem",
-  };
-
-  const heroStatCardStyle = {
-    minWidth: "120px",
-    padding: "0.8rem 1rem",
-    borderRadius: "0.9rem",
-    border: "1px solid rgba(148, 163, 184, 0.4)",
-    background:
-      "radial-gradient(circle at top left, rgba(56,189,248,0.1), rgba(15,23,42,0.95))",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.15rem",
-  };
-
-  const heroStatNumberStyle = {
-    fontSize: "1.25rem",
-    fontWeight: 600,
-  };
-
-  const heroStatLabelStyle = {
-    fontSize: "0.78rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const heroCardsColStyle = {
-    flex: "1 1 260px",
-    display: "flex",
-    justifyContent: "center",
-  };
-
-  const heroCardsTrackStyle = {
-    display: "flex",
-    gap: "1rem",
-    alignItems: "stretch",
-  };
-
-  const heroPreviewCardStyle = {
-    width: "170px",
-    borderRadius: "1.4rem",
-    padding: "1rem 1rem 1.1rem",
-    color: "#0f172a",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    background:
-      "linear-gradient(160deg, #f97316 0%, #facc15 35%, #22c55e 70%, #0ea5e9 100%)",
-    boxShadow: "0 30px 55px rgba(15, 23, 42, 0.75)",
-    position: "relative",
-    overflow: "hidden",
-  };
-
-  const heroPreviewOverlayStyle = {
-    position: "absolute",
-    inset: 0,
-    background:
-      "radial-gradient(circle at 10% 0, rgba(255,255,255,0.35) 0, transparent 55%)",
-    mixBlendMode: "screen",
-    opacity: 0.9,
-    pointerEvents: "none",
-  };
-
-  const heroPreviewLabelStyle = {
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.14em",
-  };
-
-  const heroPreviewNameStyle = {
-    fontSize: "1.1rem",
-    fontWeight: 700,
-    marginTop: "0.2rem",
-  };
-
-  const heroPreviewMetaStyle = {
-    fontSize: "0.8rem",
-    marginTop: "0.3rem",
-  };
-
-  const heroPreviewFooterStyle = {
-    marginTop: "1.1rem",
-    fontSize: "0.75rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    position: "relative",
-    zIndex: 1,
-  };
-
-  const heroPreviewBadgeStyle = {
-    padding: "0.2rem 0.6rem",
-    borderRadius: "999px",
-    border: "1px solid rgba(15,23,42,0.18)",
-    fontSize: "0.7rem",
-  };
-
-  const heroEmptyCardStyle = {
-    ...heroPreviewCardStyle,
-    background:
-      "linear-gradient(150deg, rgba(15,23,42,0.9), rgba(30,64,175,0.95))",
-    color: "#e5e7eb",
-    justifyContent: "center",
-    alignItems: "flex-start",
-  };
-
-  const heroEmptyTextStyle = {
-    fontSize: "0.9rem",
-    lineHeight: 1.4,
-    maxWidth: "11rem",
-  };
-
-  const sectionWrapperStyle = {
-    marginTop: "1.5rem",
-    background: "var(--card-bg)",
-    borderRadius: "1.2rem",
-    border: "1px solid var(--card-border)",
-    padding: "1.6rem 1.5rem 1.8rem",
-    boxShadow: "0 18px 45px rgba(15, 23, 42, 0.6)",
-  };
-
-  const sectionHeaderRowStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "1rem",
-  };
-
-  const sectionHeaderRightStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.6rem",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  };
-
-  const sectionTitleStyle = {
-    fontSize: "1.15rem",
-    marginBottom: "0.25rem",
-  };
-
-  const sectionSubtitleStyle = {
-    fontSize: "0.85rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const searchInputStyle = {
-    minWidth: "180px",
-    padding: "0.35rem 0.6rem",
-    borderRadius: "999px",
-    border: "1px solid var(--input-border)",
-    background: "var(--input-bg)",
-    color: "var(--card-text-main)",
-    fontSize: "0.8rem",
-    outline: "none",
-  };
-
-  const addButtonStyle = {
-    padding: "0.4rem 0.9rem",
-    borderRadius: "999px",
-    border: "none",
-    background:
-      "linear-gradient(135deg, #22c55e 0%, #06b6d4 40%, #3b82f6 100%)",
-    color: "#0b1120",
-    fontSize: "0.8rem",
-    fontWeight: 600,
-    cursor: "pointer",
-  };
-
-  const pillCountStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    padding: "0.2rem 0.9rem",
-    borderRadius: "999px",
-    fontSize: "0.8rem",
-    background: "rgba(37, 99, 235, 0.18)",
-    color: "#bfdbfe",
-    border: "1px solid rgba(59, 130, 246, 0.7)",
-  };
-
-  const statusRowStyle = {
-    marginTop: "1rem",
-  };
-
-  const infoTextStyle = {
-    fontSize: "0.85rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const errorBannerStyle = {
-    marginTop: "0.75rem",
-    padding: "0.75rem 1rem",
-    borderRadius: "0.8rem",
-    background: "rgba(248, 113, 113, 0.18)",
-    border: "1px solid rgba(248, 113, 113, 0.6)",
-    fontSize: "0.85rem",
-  };
-
-  const actionBannerBaseStyle = {
-    marginTop: "0.75rem",
-    padding: "0.65rem 0.9rem",
-    borderRadius: "0.8rem",
-    fontSize: "0.8rem",
-  };
-
-  const cardsContainerStyle = {
-    marginTop: "1rem",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "1rem",
-  };
-
-  const itemCardStyle = {
-    borderRadius: "0.9rem",
-    border: "1px solid var(--card-border)",
-    padding: "1rem 1.1rem",
-    background:
-      "radial-gradient(circle at top left, rgba(56,189,248,0.12), rgba(15,23,42,0.95))",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.7rem",
-    position: "relative",
-    overflow: "hidden",
-  };
-
-  const itemAccentBarStyle = {
-    position: "absolute",
-    inset: "0 auto 0 0",
-    width: "3px",
-    background:
-      "linear-gradient(to bottom, #3b82f6, #22c55e, #ec4899, #eab308)",
-    opacity: 0.7,
-  };
-
-  const itemHeaderStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: "0.75rem",
-  };
-
-  const nameStyle = {
-    fontSize: "1rem",
-    fontWeight: 600,
-  };
-
-  const refNoStyle = {
-    fontSize: "0.78rem",
-    color: "var(--card-text-sub)",
-  };
-
-  const indexBadgeStyle = {
-    fontSize: "0.75rem",
-    padding: "0.15rem 0.6rem",
-    borderRadius: "999px",
-    border: "1px solid rgba(148,163,184,0.6)",
-    color: "var(--card-text-sub)",
-  };
-
-  const metaRowStyle = {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "0.4rem",
-    marginTop: "0.1rem",
-  };
-
-  const metaChipStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    padding: "0.15rem 0.6rem",
-    borderRadius: "999px",
-    fontSize: "0.7rem",
-    background: "rgba(15,23,42,0.8)",
-    color: "#e5e7eb",
-    border: "1px solid rgba(148,163,184,0.5)",
-  };
-
-  const trxPillStyle = {
-    ...metaChipStyle,
-    background: "rgba(22,163,74,0.1)",
-    borderColor: "rgba(22,163,74,0.6)",
-    color: "#bbf7d0",
-  };
-
-  const fieldRowStyle = {
-    display: "grid",
-    gridTemplateColumns: "80px minmax(0, 1fr)",
-    columnGap: "0.5rem",
-    rowGap: "0.1rem",
-    fontSize: "0.8rem",
-  };
-
-  const labelStyle = {
-    color: "var(--card-text-sub)",
-  };
-
-  const valueStyle = {
-    color: "var(--card-text-main)",
-  };
-
-  const cardActionsRowStyle = {
-    marginTop: "0.6rem",
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "0.45rem",
-  };
-
-  const smallButtonBaseStyle = {
-    padding: "0.35rem 0.8rem",
-    borderRadius: "999px",
-    fontSize: "0.75rem",
-    fontWeight: 500,
-    border: "1px solid transparent",
-    cursor: "pointer",
-  };
-
-  const editButtonStyle = {
-    ...smallButtonBaseStyle,
-    background:
-      "linear-gradient(135deg, rgba(56,189,248,0.15), rgba(37,99,235,0.6))",
-    borderColor: "rgba(59,130,246,0.9)",
-    color: "#e5e7eb",
-  };
-
-  const deleteButtonStyle = {
-    ...smallButtonBaseStyle,
-    background: "rgba(248,113,113,0.12)",
-    borderColor: "rgba(248,113,113,0.8)",
-    color: "#fecaca",
-  };
-
-  const footerStyle = {
-    marginTop: "1.5rem",
-    fontSize: "0.75rem",
-    color: "var(--card-text-sub)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "0.5rem",
-    flexWrap: "wrap",
-  };
-
-  const footerRightStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-  };
-
-  const footerDotStyle = {
-    width: "4px",
-    height: "4px",
-    borderRadius: "999px",
-    background: "rgba(148,163,184,0.8)",
-  };
-
-  // MODAL STYLES
-  const modalBackdropStyle = {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(15,23,42,0.85)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 50,
-  };
-
-  const modalCardStyle = {
-    width: "100%",
-    maxWidth: "520px",
-    background: "var(--card-bg)",
-    borderRadius: "1rem",
-    border: "1px solid var(--card-border)",
-    padding: "1.5rem 1.7rem 1.7rem",
-    boxShadow: "0 24px 60px rgba(15,23,42,0.9)",
-  };
-
-  const modalHeaderStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "1rem",
-  };
-
-  const modalTitleStyle = {
-    fontSize: "1rem",
-    fontWeight: 600,
-  };
-
-  const modalCloseButtonStyle = {
-    border: "none",
-    background: "transparent",
-    color: "var(--card-text-sub)",
-    cursor: "pointer",
-    fontSize: "1.2rem",
-  };
-
-  const modalFormGridStyle = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: "0.75rem 0.9rem",
-  };
-
-  const modalFieldStyle = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
-    fontSize: "0.8rem",
-  };
-
-  const modalLabelStyle = {
-    color: "var(--card-text-sub)",
-  };
-
-  const modalInputStyle = {
-    borderRadius: "0.6rem",
-    border: "1px solid var(--input-border)",
-    padding: "0.45rem 0.65rem",
-    background: "var(--input-bg)",
-    color: "var(--card-text-main)",
-    fontSize: "0.85rem",
-    outline: "none",
-  };
-
-  const modalFooterStyle = {
-    marginTop: "1.2rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "0.75rem",
-    flexWrap: "wrap",
-  };
-
-  const modalPrimaryButtonStyle = {
-    padding: "0.55rem 1.2rem",
-    borderRadius: "999px",
-    border: "none",
-    background:
-      "linear-gradient(135deg, #22c55e 0%, #06b6d4 40%, #3b82f6 100%)",
-    color: "#0b1120",
-    fontSize: "0.85rem",
-    fontWeight: 600,
-    cursor: "pointer",
-  };
-
-  const modalSecondaryButtonStyle = {
-    padding: "0.5rem 1rem",
-    borderRadius: "999px",
-    border: "1px solid rgba(148,163,184,0.6)",
-    background: "transparent",
-    color: "var(--card-text-sub)",
-    fontSize: "0.8rem",
-    cursor: "pointer",
-  };
-
-  // ====== JSX RETURN ======
   return (
-    <main style={pageStyle} className="tk-page">
+    <div style={{ minHeight: "100vh" }}>
       {/* TOP BAR */}
-      <header style={topBarStyle}>
-        <div style={brandWrapperStyle}>
-          <div style={logoCircleStyle}>TK</div>
-          <div>
-            <div style={brandTitleStyle}>Tikus Dashboard</div>
-            <div style={brandSubtitleStyle}>Monitor Your Data Realtime</div>
+      <div style={{ padding: "22px 26px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: "50%",
+              background: "linear-gradient(135deg, #38bdf8, #6366f1)",
+              display: "grid", placeItems: "center",
+              color: "#071021", fontWeight: 900,
+            }}>
+              TK
+            </div>
+            <div>
+              <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>TIKUS DASHBOARD</div>
+              <div style={{ fontSize: 12.5, color: "var(--card-text-sub)" }}>Monitor Your Data Realtime</div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button style={smallBtn()} onClick={toggleTheme}>
+              {theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode"}
+            </button>
+            <div style={{ color: "var(--card-text-sub)", fontSize: 13.5 }}>Hi,</div>
+            <div style={{ fontWeight: 800 }}>{email}</div>
+            <button style={smallBtn()} onClick={() => navigate("/profile")}>Profile</button>
+            <button style={smallBtn("danger")} onClick={handleLogout}>Logout</button>
           </div>
         </div>
-        {/* Desktop Menu */}
-<div style={topRightStyle} className="desktop-menu">
-  <button style={themeToggleStyle} onClick={toggleTheme}>
-    <div
-      style={{ 
-        ...themeDotStyle,
-        background:
-          theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
-      }}
-    />
-    <span>{theme === "light" ? "Light" : "Dark"}</span>
-  </button>
 
-  <div style={welcomeTextStyle}>
-    {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
-  </div>
-
-  <button
-    style={logoutButtonStyle}
-    onClick={() => navigate("/profile")}
-    title="Profile"
-  >
-    <span>Profile</span>
-  </button>
-  <button style={logoutButtonStyle} onClick={handleLogout}>
-    <span>Logout</span>
-  </button>
-</div>
-
-{/* Mobile Hamburger Menu */}
-<div className="mobile-menu-container">
-  <button 
-    className="hamburger-btn"
-    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-    aria-label="Menu"
-  >
-    <span className="hamburger-line"></span>
-    <span className="hamburger-line"></span>
-    <span className="hamburger-line"></span>
-  </button>
-  
-  <div className={`mobile-menu-dropdown ${isMobileMenuOpen ? 'show' : ''}`}>
-    <div className="mobile-welcome-text">
-      {email ? `Hi, ${email}` : "Hi, selamat datang 👋"}
-    </div>
-    
-    <button 
-      className="mobile-menu-item"
-      onClick={() => {
-        toggleTheme();
-        setIsMobileMenuOpen(false);
-      }}
-    >
-      <span>Theme: {theme === "light" ? "Light" : "Dark"}</span>
-      <div 
-        className="theme-dot-small"
-        style={{
-          background: theme === "light" ? "#facc15" : "rgba(148,163,184,0.6)",
-        }}
-      />
-    </button>
-
-    <button
-      className="mobile-menu-item"
-      onClick={() => {
-        navigate("/profile");
-        setIsMobileMenuOpen(false);
-      }}
-      style={{ justifyContent: "center" }}
-    >
-      <span>Profile</span>
-    </button>
-    
-    <button 
-      className="mobile-menu-item"
-      onClick={() => {
-        handleLogout();
-        setIsMobileMenuOpen(false);
-      }}
-      style={{ color: '#ef4444', justifyContent: 'center' }}
-    >
-      <span>Logout</span>
-    </button>
-  </div>
-</div>
-
-{/* Close dropdown ketika klik outside */}
-{isMobileMenuOpen && (
-  <div 
-    style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 999,
-      background: 'transparent'
-    }}
-    onClick={() => setIsMobileMenuOpen(false)}
-  />
-)}
-      </header>
-
-      {/* HERO */}
-      <section style={heroSectionStyle} className="tk-page">
-        <div style={heroTextColStyle} className="tk-hero-text">
-          <div>
-            <div style={heroEyebrowStyle}>COMPANY PROFILES</div>
-            <h1 style={heroTitleStyle}>
-              MONITORING{" "}
-              <span style={heroTitleAccentStyle}>MY COMPANY.</span>
-            </h1>
-          </div>
-
-          <p style={heroSubtitleStyle}>MY TEAM OVERVIEW</p>
-
-          <div style={heroActionsStyle}>
-            <button style={primaryCtaStyle} onClick={handleScrollToData}>
-              TEAM INFORMATION
-            </button>
-
-            <button
-              style={secondaryCtaStyle}
-              onClick={() => navigate("/bank-info")}
-            >
-              BANK INFO
-            </button>
-
-            <button
-              style={secondaryCtaStyle /* atau style tab lu */}
-              onClick={() => navigate("/dashboard")}
-            >
-              DASHBOARD
-            </button>
-
-          </div>
-
-          <div style={heroStatsRowStyle}>
-            <div style={heroStatCardStyle}>
-              <div style={heroStatNumberStyle}>{resultList.length}</div>
-              <div style={heroStatLabelStyle}>Anggota Aktif</div>
-            </div>
-            <div style={heroStatCardStyle}>
-              <div style={heroStatNumberStyle}>Rp {formatIdr(totalTrx)}</div>
-              <div style={heroStatLabelStyle}>Salary Information</div>
-            </div>
-            <div style={heroStatCardStyle}>
-              <div style={heroStatNumberStyle}>
-                {resultList.length > 0 ? "Real-time" : "Menunggu data"}
+        {/* HERO */}
+        <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "rgba(2,6,23,0.35)", backdropFilter: "blur(14px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 0.95fr)", gap: 18, alignItems: "stretch" }}>
+            <div>
+              <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>COMPANY PROFILES</div>
+              <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
+                <h1 style={{ fontSize: 44, lineHeight: 1.05, margin: 0, fontWeight: 900 }}>
+                  MONITORING <span style={{ color: "#38bdf8" }}>MY COMPANY</span>.
+                </h1>
               </div>
-              <div style={heroStatLabelStyle}>System Information</div>
+
+              <p style={{ marginTop: 8, ...sectionSub }}>MY TEAM OVERVIEW</p>
+
+              <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button style={pillBtn(true)} disabled>TEAM INFORMATION</button>
+                <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>BANK INFO</button>
+                <button style={pillBtn(false)} onClick={() => navigate("/expense")}>EXPENSE</button>
+                <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>DASHBOARD</button>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div style={heroCardsColStyle} className="tk-hero-cards">
-          <div style={heroCardsTrackStyle}>
-            {resultList.slice(0, 3).map((item, index) => (
-              <article key={item.refNo ?? index} style={heroPreviewCardStyle}>
-                <div style={heroPreviewOverlayStyle} />
-                <div style={{ position: "relative", zIndex: 1 }}>
-                  <div style={heroPreviewLabelStyle}>Profil #{index + 1}</div>
-                  <div style={heroPreviewNameStyle}>{item.name}</div>
-                  <div style={heroPreviewMetaStyle}>
-                    {item.gender} • {item.position}
-                  </div>
-                </div>
-                <div style={heroPreviewFooterStyle}>
-                  <span style={heroPreviewBadgeStyle}>
-                    Trx Rp {formatIdr(item.trxAmt)}
-                  </span>
-                </div>
-              </article>
-            ))}
-
-            {resultList.length === 0 && (
-              <article style={heroEmptyCardStyle}>
-                <div style={heroPreviewOverlayStyle} />
-                <p style={heroEmptyTextStyle}>No Data Found</p>
-              </article>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* DATA SECTION */}
-      <section
-        id="tkd0400-section"
-        style={sectionWrapperStyle}
-        className="tk-section"
-      >
-        <div style={sectionHeaderRowStyle}>
-          <div>
-            <h2 style={sectionTitleStyle}>DATA ACTIVE USER</h2>
-            <p style={sectionSubtitleStyle}>Data Summary</p>
-          </div>
-          <div style={sectionHeaderRightStyle}>
-            <input
-              style={searchInputStyle}
-              type="text"
-              placeholder="Search name / email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button
-              type="button"
-              style={addButtonStyle}
-              onClick={openAddModal}
-            >
-              + Add User
-            </button>
-            <span style={pillCountStyle}>
-              {filteredList.length} / {resultList.length} data
-            </span>
-          </div>
-        </div>
-
-        <div style={statusRowStyle}>
-          {loading && <p style={infoTextStyle}>Get Data From Backend ...</p>}
-
-          {!loading && !error && resultList.length === 0 && (
-            <p style={infoTextStyle}>No data from backend.</p>
-          )}
-
-          {!loading &&
-            !error &&
-            resultList.length > 0 &&
-            filteredList.length === 0 && (
-              <p style={infoTextStyle}>
-                Tidak ada data yang cocok dengan pencarian.
-              </p>
-            )}
-
-          {!loading && error && (
-            <div style={errorBannerStyle}>
-              <strong>Ups, Error: </strong>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {actionMessage && (
+            {/* Right-side card (keep the old box) */}
             <div
               style={{
-                ...actionBannerBaseStyle,
-                background:
-                  actionMessage.type === "success"
-                    ? "rgba(34,197,94,0.12)"
-                    : "rgba(248,113,113,0.12)",
-                border:
-                  actionMessage.type === "success"
-                    ? "1px solid rgba(34,197,94,0.7)"
-                    : "1px solid rgba(248,113,113,0.7)",
+                borderRadius: 22,
+                border: "1px solid rgba(234,179,8,0.35)",
+                background: "linear-gradient(135deg, rgba(234,179,8,0.26) 0%, rgba(250,204,21,0.10) 55%, rgba(2,6,23,0.18) 100%)",
+                boxShadow: "0 24px 60px rgba(2,6,23,0.55)",
+                padding: 18,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
               }}
             >
-              {actionMessage.text}
-            </div>
-          )}
+              <div>
+                <div style={{ fontSize: 12, letterSpacing: 2.1, fontWeight: 900, color: "rgba(250,204,21,0.95)" }}>
+                  BRANCH MANAGER CARD
+                </div>
+                <div style={{ marginTop: 10, fontSize: 18, fontWeight: 900 }}>
+                  {branchManagerCard?.name || "No Branch Manager"}
+                </div>
+                <div style={{ marginTop: 6, color: "rgba(226,232,240,0.85)", fontSize: 12.5 }}>
+                  {branchManagerCard?.email || "-"}
+                </div>
+              </div>
 
-          {lastTkd0100Request && (
-              <div
-                style={{
-                  marginTop: "0.75rem",
-                  padding: "0.85rem 1rem",
-                  borderRadius: "0.8rem",
-                  border: "1px solid rgba(148,163,184,0.35)",
-                  background: "rgba(15,23,42,0.55)",
-                  fontSize: "0.8rem",
-                  overflow: "auto",
-                }}
-              >
+              <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "rgba(2,6,23,0.25)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(226,232,240,0.75)" }}>Salary</div>
+                  <div style={{ marginTop: 4, fontWeight: 900 }}>Rp {formatIdr(branchManagerCard?.salaryAmt)}</div>
+                </div>
+                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "rgba(2,6,23,0.25)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(226,232,240,0.75)" }}>Join</div>
+                  <div style={{ marginTop: 4, fontWeight: 900 }}>{branchManagerCard?.joinWorkDt || "-"}</div>
+                </div>
+              </div>
             </div>
-          )}
-
+          </div>
         </div>
 
-        {!loading && !error && filteredList.length > 0 && (
-          <div
-            style={cardsContainerStyle}
-            className="tk-card-grid"
-          >
-            {filteredList.map((item, index) => (
-              <div key={item.refNo ?? index} style={itemCardStyle}>
-                <div style={itemAccentBarStyle} />
-                <div style={itemHeaderStyle}>
-                  <div>
-                    <div style={nameStyle}>{item.name}</div>
-                    <div style={refNoStyle}>Ref No: {item.refNo}</div>
+        {/* TOP SUMMARY */}
+        <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+          <div style={card}>
+            <div style={{ ...sectionSub, marginTop: 0 }}>Branch</div>
+            <div style={{ marginTop: 6, fontSize: 18, fontWeight: 900 }}>{selectedBranch?.branchName || "—"}</div>
+            <div style={{ marginTop: 10, ...badge }}>Total branch: {branches.length}</div>
+          </div>
+
+          <div style={card}>
+            <div style={{ ...sectionSub, marginTop: 0 }}>Anggota Aktif</div>
+            <div style={{ marginTop: 6, fontSize: 28, fontWeight: 900 }}>{summary.count}</div>
+            <div style={{ marginTop: 10, ...badge }}>Terfilter branch + search</div>
+          </div>
+
+          <div style={card}>
+            <div style={{ ...sectionSub, marginTop: 0 }}>Salary Information</div>
+            <div style={{ marginTop: 6, fontSize: 20, fontWeight: 900 }}>Rp {formatIdr(summary.totalSalary)}</div>
+            <div style={{ marginTop: 10, ...badge }}>THR Rp {formatIdr(summary.totalThr)}</div>
+          </div>
+        </div>
+
+        {/* DATA SECTION */}
+        <div style={{ marginTop: 18, ...card }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={sectionTitle}>DATA ACTIVE USER</div>
+              <div style={sectionSub}>Data Summary</div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <input
+                style={{ ...input, width: 240 }}
+                placeholder="Search name / email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button style={smallBtn("primary")} onClick={openAddMember}>+ Add User</button>
+              <span style={badge}>{filteredMembers.length} / {members.filter((m)=> !selectedBranchId || Number(m.branchId)===Number(selectedBranchId)).length} data</span>
+            </div>
+          </div>
+
+          {/* branch controls */}
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ minWidth: 260, flex: "1 1 260px" }}>
+              <div style={label}>Choose Branch</div>
+              <select
+                style={selectStyle}
+                value={selectedBranchId}
+                onChange={(e) => pickBranch(Number(e.target.value))}
+              >
+                <option value="">-- pilih branch --</option>
+                {branches.map((b) => (
+                  <option key={b.branchId} value={b.branchId}>
+                    {b.branchName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <button style={smallBtn()} onClick={openAddBranch}>+ Add Branch</button>
+              <button style={smallBtn()} onClick={openEditBranch}>Edit Branch</button>
+              <button style={smallBtn("danger")} onClick={askDeleteBranch}>Delete Branch</button>
+            </div>
+          </div>
+
+          {/* status */}
+          <div style={{ marginTop: 14 }}>
+            {loading && <div style={{ color: "var(--card-text-sub)" }}>Get Data From Backend ...</div>}
+            {!loading && error && (
+              <div style={{ padding: 12, borderRadius: 14, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.10)", color: "rgba(248,113,113,0.95)" }}>
+                Ups, Error: {error}
+              </div>
+            )}
+          </div>
+
+          {/* grouped list */}
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 18 }}>
+            {[...grouped.entries()].map(([pos, list]) => {
+              if (pos === "Other" && list.length === 0) return null;
+              return (
+                <div key={pos}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900, fontSize: 14.5, letterSpacing: 0.4 }}>
+                      {pos}
+                    </div>
+                    <div style={badge}>{list.length} user</div>
                   </div>
-                  <span style={indexBadgeStyle}>#{index + 1}</span>
+
+                  <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                    {list.length === 0 ? (
+                      <div style={{ ...badge, justifyContent: "center" }}>No Data Found</div>
+                    ) : (
+                      list.map((m) => (
+                        <div key={m.refNo} style={{ ...card, padding: 14 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <div>
+                              <div style={{ fontWeight: 900, fontSize: 16 }}>{m.name}</div>
+                              <div style={{ marginTop: 4, color: "var(--card-text-sub)", fontSize: 12.5 }}>
+                                {m.position || "-"}
+                              </div>
+                            </div>
+                            <span style={badge}>{m.position || "-"}</span>
+                          </div>
+
+                          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div>
+                              <div style={label}>Email</div>
+                              <div style={{ fontWeight: 700 }}>{m.email}</div>
+                            </div>
+                            <div>
+                              <div style={label}>Join</div>
+                              <div style={{ fontWeight: 700 }}>{toDateInput(m.joinWorkDt) || "-"}</div>
+                            </div>
+                            <div>
+                              <div style={label}>Salary</div>
+                              <div style={{ fontWeight: 900 }}>Rp {formatIdr(m.salaryAmt)}</div>
+                            </div>
+                            <div>
+                              <div style={label}>Cuti</div>
+                              <div style={{ fontWeight: 800 }}>{m.cuti ?? "-"}</div>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 10,
+                              color: "var(--card-text-sub)",
+                              fontSize: 12.5,
+                              overflow: "hidden",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                            }}
+                          >
+                            {m.remark || "—"}
+                          </div>
+
+                          <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <button style={smallBtn()} onClick={() => openEditMember(m)}>Update</button>
+                            <button style={smallBtn("danger")} onClick={() => askDeleteMember(m)}>Delete</button>
+                            <button
+                              style={smallBtn()}
+                              onClick={() => setExpandedMembers((p) => ({ ...p, [m.refNo]: !p[m.refNo] }))}
+                            >
+                              {expandedMembers[m.refNo] ? "Hide Detail" : "Detail"}
+                            </button>
+                          </div>
+
+                          {expandedMembers[m.refNo] ? (
+                            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(148,163,184,0.12)" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                                <div>
+                                  <div style={label}>Alamat</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.address || "-"}</div>
+                                </div>
+                                <div>
+                                  <div style={label}>Gender</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.gender || "-"}</div>
+                                </div>
+
+                                <div>
+                                  <div style={label}>Position</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.position || "-"}</div>
+                                </div>
+                                <div>
+                                  <div style={label}>Religion</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.religion || "-"}</div>
+                                </div>
+
+                                <div>
+                                  <div style={label}>Working Web</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.workingWeb || "-"}</div>
+                                </div>
+                                <div>
+                                  <div style={label}>No Rekening</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.noRekening || "-"}</div>
+                                </div>
+
+                                <div>
+                                  <div style={label}>Uang Makan (฿)</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>฿ {formatThb(m.foodAmount)}</div>
+                                </div>
+                                <div>
+                                  <div style={label}>THR</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>Rp {formatIdr(m.thr)}</div>
+                                </div>
+
+                                <div>
+                                  <div style={label}>Bonus</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>Rp {formatIdr(m.bonus)}</div>
+                                </div>
+                                <div>
+                                  <div style={label}>Last Salary Increase</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8 }}>{toDateInput(m.lastSalaryIncreaseDt) || "-"}</div>
+                                </div>
+
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                  <div style={label}>Remark</div>
+                                  <div style={{ fontWeight: 650, fontSize: 12.8, whiteSpace: "pre-wrap" }}>{m.remark || "-"}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* TOAST */}
+        {toast ? (
+          <div style={{
+            position: "fixed", left: 18, bottom: 18, zIndex: 999,
+            padding: "12px 14px",
+            borderRadius: 14,
+            border: toast.type === "error" ? "1px solid rgba(239,68,68,0.35)" : "1px solid rgba(34,197,94,0.35)",
+            background: toast.type === "error" ? "rgba(239,68,68,0.10)" : "rgba(34,197,94,0.10)",
+            color: toast.type === "error" ? "rgba(248,113,113,0.95)" : "rgba(134,239,172,0.95)",
+            backdropFilter: "blur(14px)",
+            maxWidth: 520,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ fontWeight: 800 }}>{toast.text}</div>
+              <button style={smallBtn()} onClick={() => setToast(null)}>OK</button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* BRANCH MODAL */}
+        {branchModal ? (
+          <div style={modalOverlay} onClick={() => !branchBusy && setBranchModal(null)}>
+            <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ fontWeight: 900, fontSize: 16 }}>
+                  {branchModal.mode === "add" ? "Add Branch" : "Edit Branch"}
+                </div>
+                <button style={smallBtn()} onClick={() => setBranchModal(null)} disabled={branchBusy}>✕</button>
+              </div>
+
+              <div style={{ marginTop: 12, ...field }}>
+                <div style={label}>Branch Name</div>
+                <input style={input} value={branchName} onChange={(e) => setBranchName(e.target.value)} placeholder="Nama branch..." />
+              </div>
+
+              <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button style={smallBtn()} onClick={() => setBranchModal(null)} disabled={branchBusy}>Cancel</button>
+                <button style={smallBtn("primary")} onClick={submitBranch} disabled={branchBusy}>
+                  {branchBusy ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* MEMBER MODAL */}
+        {memberModal ? (
+          <div style={modalOverlay} onClick={() => !memberBusy && setMemberModal(null)}>
+            <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ fontWeight: 900, fontSize: 16 }}>
+                  {memberModal.mode === "add" ? "Add User" : "Update User"}
+                </div>
+                <button style={smallBtn()} onClick={() => setMemberModal(null)} disabled={memberBusy}>✕</button>
+              </div>
+
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={grid3}>
+                  <div style={field}>
+                    <div style={label}>Branch</div>
+                    <input style={input} value={selectedBranch?.branchName || "-"} disabled />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Position</div>
+                    <select
+                      style={selectStyle}
+                      value={memberForm.position}
+                      onChange={(e) => setMemberForm((p) => ({ ...p, position: e.target.value }))}
+                    >
+                      <option value="">-- pilih posisi --</option>
+                      {POSITION_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Gender</div>
+                    <select
+                      style={selectStyle}
+                      value={memberForm.gender}
+                      onChange={(e) => setMemberForm((p) => ({ ...p, gender: e.target.value }))}
+                    >
+                      <option value="">-- pilih --</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div style={metaRowStyle}>
-                  <span style={metaChipStyle}>{item.gender}</span>
-                  <span style={metaChipStyle}>{item.position}</span>
-                  <span style={trxPillStyle}>
-                    Trx Rp {formatIdr(item.trxAmt)}
-                  </span>
+                <div style={grid2}>
+                  <div style={field}>
+                    <div style={label}>Name</div>
+                    <input style={input} value={memberForm.name} onChange={(e) => setMemberForm((p) => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Email</div>
+                    <input style={input} value={memberForm.email} onChange={(e) => setMemberForm((p) => ({ ...p, email: e.target.value }))} />
+                  </div>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: "0.35rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.25rem",
+                <div style={field}>
+                  <div style={label}>Address</div>
+                  <input style={input} value={memberForm.address} onChange={(e) => setMemberForm((p) => ({ ...p, address: e.target.value }))} />
+                </div>
+
+                <div style={grid3}>
+                  <div style={field}>
+                    <div style={label}>Join Work Date</div>
+                    <input type="date" style={input} value={toDateInput(memberForm.joinWorkDt)} onChange={(e) => setMemberForm((p) => ({ ...p, joinWorkDt: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Last Salary Increase</div>
+                    <input type="date" style={input} value={toDateInput(memberForm.lastSalaryIncreaseDt)} onChange={(e) => setMemberForm((p) => ({ ...p, lastSalaryIncreaseDt: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Cuti</div>
+                    <input style={input} value={memberForm.cuti} onChange={(e) => setMemberForm((p) => ({ ...p, cuti: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div style={grid3}>
+                  <div style={field}>
+                    <div style={label}>Salary Amount</div>
+                    <input style={input} value={memberForm.salaryAmt} onChange={(e) => setMemberForm((p) => ({ ...p, salaryAmt: e.target.value }))} placeholder="contoh: 25000000.50" />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Uang Makan (฿)</div>
+                    <input style={input} value={memberForm.foodAmount} onChange={(e) => setMemberForm((p) => ({ ...p, foodAmount: e.target.value }))} placeholder="contoh: 1200.00 (THB)" />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>THR</div>
+                    <input style={input} value={memberForm.thr} onChange={(e) => setMemberForm((p) => ({ ...p, thr: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div style={grid3}>
+                  <div style={field}>
+                    <div style={label}>Bonus</div>
+                    <input style={input} value={memberForm.bonus} onChange={(e) => setMemberForm((p) => ({ ...p, bonus: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>No Rekening</div>
+                    <input style={input} value={memberForm.noRekening} onChange={(e) => setMemberForm((p) => ({ ...p, noRekening: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Religion</div>
+                    <input style={input} value={memberForm.religion} onChange={(e) => setMemberForm((p) => ({ ...p, religion: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div style={grid2}>
+                  <div style={field}>
+                    <div style={label}>Working Web</div>
+                    <input style={input} value={memberForm.workingWeb} onChange={(e) => setMemberForm((p) => ({ ...p, workingWeb: e.target.value }))} />
+                  </div>
+                  <div style={field}>
+                    <div style={label}>Remark</div>
+                    <input style={input} value={memberForm.remark} onChange={(e) => setMemberForm((p) => ({ ...p, remark: e.target.value }))} />
+                  </div>
+                </div>
+
+              </div>
+
+              <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button style={smallBtn()} onClick={() => setMemberModal(null)} disabled={memberBusy}>Cancel</button>
+                <button style={smallBtn("primary")} onClick={submitMember} disabled={memberBusy}>
+                  {memberBusy ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* CONFIRM DELETE */}
+        {confirmDelete ? (
+          <div style={modalOverlay} onClick={() => !branchBusy && !memberBusy && setConfirmDelete(null)}>
+            <div style={{ ...modalCard, maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontWeight: 900, fontSize: 16 }}>Confirm Delete</div>
+              <div style={{ marginTop: 8, color: "var(--card-text-sub)", fontSize: 13.5 }}>
+                {confirmDelete.type === "branch"
+                  ? `Hapus branch "${confirmDelete.payload.branchName}"?`
+                  : `Hapus user "${confirmDelete.payload.name}" (${confirmDelete.payload.email})?`
+                }
+              </div>
+
+              <div style={{ marginTop: 14, display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button style={smallBtn()} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                <button
+                  style={smallBtn("danger")}
+                  onClick={() => {
+                    if (confirmDelete.type === "branch") doDeleteBranch(confirmDelete.payload.branchId);
+                    if (confirmDelete.type === "member") doDeleteMember(confirmDelete.payload.refNo);
                   }}
+                  disabled={branchBusy || memberBusy}
                 >
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Alamat</div>
-                    <div style={valueStyle}>{item.address}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Email</div>
-                    <div style={valueStyle}>{item.email}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Birth</div>
-                    <div style={valueStyle}>{toDateInput(item.birthDate) || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Join</div>
-                    <div style={valueStyle}>{toDateInput(item.joinWorkDt) || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Religion</div>
-                    <div style={valueStyle}>{item.religion || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Web</div>
-                    <div style={valueStyle}>{item.workingWeb || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Uang Makan</div>
-                    <div style={valueStyle}>Rp {formatIdr(item.foodAmt ?? item.foodAmount)}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>THR</div>
-                    <div style={valueStyle}>Rp {formatIdr(item.thr)}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Bonus</div>
-                    <div style={valueStyle}>Rp {formatIdr(item.bonus)}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Harga Ticket</div>
-                    <div style={valueStyle}>Rp {formatIdr(item.tiketAmt ?? item.ticketAmt)}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Buy Ticket</div>
-                    <div style={valueStyle}>{toDateInput(item.tiketBuyDt ?? item.ticketBuyDt) || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Rekening</div>
-                    <div style={valueStyle}>{item.noRekening || "-"}</div>
-                  </div>
-
-                  <div style={fieldRowStyle}>
-                    <div style={labelStyle}>Naik Gaji</div>
-                    <div style={valueStyle}>{toDateInput(item.lastSalaryIncreaseDt) || "-"}</div>
-                  </div>
-
-                </div>
-
-
-                <div style={cardActionsRowStyle}>
-                  <button
-                    type="button"
-                    style={editButtonStyle}
-                    onClick={() => openEditModal(item)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    style={deleteButtonStyle}
-                    onClick={() => handleDeleteClick(item)}
-                    disabled={deletingEmail === item.email}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* FOOTER */}
-      <footer style={footerStyle}>
-        <div>
-          <strong>Tikus Dashboard</strong> &mdash; www.Kamboja.com
-        </div>
-        <div style={footerRightStyle}>
-          <span>Data</span>
-          <span style={footerDotStyle} />
-          <span>Frontend by React + Vite</span>
-        </div>
-      </footer>
-
-      {/* MODAL EDIT USER */}
-      {editingItem && (
-        <div style={modalBackdropStyle} onClick={closeEditModal}>
-          <div
-            style={modalCardStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={modalHeaderStyle}>
-              <div>
-                <div style={modalTitleStyle}>Edit User</div>
-                <div style={sectionSubtitleStyle}>
-                  Ubah data user lalu simpan perubahan.
-                </div>
-              </div>
-              <button
-                type="button"
-                style={modalCloseButtonStyle}
-                onClick={closeEditModal}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit}>
-              <div style={modalFormGridStyle}>
-                {/* Nama */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Nama</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.name}
-                    onChange={(e) => handleEditChange("name", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Posisi */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Posisi</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.position}
-                    onChange={(e) => handleEditChange("position", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Gender */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Gender</label>
-                  <select
-                    className="tk-select"
-                    style={modalInputStyle}
-                    value={editForm.gender}
-                    onChange={(e) => handleEditChange("gender", e.target.value)}
-                    required
-                  >
-                    <option value="">Pilih</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-
-                {/* Email */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Email</label>
-                  <input
-                    style={modalInputStyle}
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => handleEditChange("email", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Alamat */}
-                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
-                  <label style={modalLabelStyle}>Alamat</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.address}
-                    onChange={(e) => handleEditChange("address", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Salary Amount */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Salary Amount</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={editForm.salaryAmount}
-                    onChange={(e) => handleEditChange("salaryAmount", e.target.value)}
-                  />
-                </div>
-
-                {/* Birth Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Birth Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={editForm.birthDate}
-                    onChange={(e) => handleEditChange("birthDate", e.target.value)}
-                  />
-                </div>
-
-                {/* Join Work Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Join Work Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={editForm.joinWorkDt}
-                    onChange={(e) => handleEditChange("joinWorkDt", e.target.value)}
-                  />
-                </div>
-
-                {/* Religion */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Religion</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.religion}
-                    onChange={(e) => handleEditChange("religion", e.target.value)}
-                    placeholder="Islam / Kristen / Hindu..."
-                  />
-                </div>
-
-                {/* Working Web */}
-                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
-                  <label style={modalLabelStyle}>Working Web</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.workingWeb}
-                    onChange={(e) => handleEditChange("workingWeb", e.target.value)}
-                    placeholder="SUDUT TIMUR / https://..."
-                  />
-                </div>
-
-                {/* Food Amount */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Food Amount</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={editForm.foodAmount}
-                    onChange={(e) => handleEditChange("foodAmount", e.target.value)}
-                  />
-                </div>
-
-                {/* THR */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>THR</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={editForm.thr}
-                    onChange={(e) => handleEditChange("thr", e.target.value)}
-                  />
-                </div>
-
-                {/* Bonus */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Bonus</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={editForm.bonus}
-                    onChange={(e) => handleEditChange("bonus", e.target.value)}
-                  />
-                </div>
-
-                {/* Ticket Amount */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Ticket Amount</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={editForm.ticketAmt}
-                    onChange={(e) => handleEditChange("ticketAmt", e.target.value)}
-                  />
-                </div>
-
-                {/* Ticket Buy Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Ticket Buy Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={editForm.ticketBuyDt}
-                    onChange={(e) => handleEditChange("ticketBuyDt", e.target.value)}
-                  />
-                </div>
-
-                {/* No Rekening */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>No Rekening</label>
-                  <input
-                    style={modalInputStyle}
-                    value={editForm.noRekening}
-                    onChange={(e) => handleEditChange("noRekening", e.target.value)}
-                    placeholder="1234567890"
-                  />
-                </div>
-
-                {/* Last Salary Increase */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Last Salary Increase</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={editForm.lastSalaryIncreaseDt}
-                    onChange={(e) => handleEditChange("lastSalaryIncreaseDt", e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={modalFooterStyle}>
-                <button
-                  type="button"
-                  style={modalSecondaryButtonStyle}
-                  onClick={closeEditModal}
-                  disabled={isSaving}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  style={modalPrimaryButtonStyle}
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                  {branchBusy || memberBusy ? "Deleting..." : "Delete"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ADD USER */}
-      {isAddModalOpen && (
-        <div style={modalBackdropStyle} onClick={closeAddModal}>
-          <div
-            style={modalCardStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={modalHeaderStyle}>
-              <div>
-                <div style={modalTitleStyle}>Add New User</div>
-                <div style={sectionSubtitleStyle}>
-                  Lengkapi data user baru untuk ditambahkan ke Tikus Dashboard.
-                </div>
-              </div>
-              <button
-                type="button"
-                style={modalCloseButtonStyle}
-                onClick={closeAddModal}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAdd}>
-              <div style={modalFormGridStyle}>
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Nama</label>
-                  <input
-                    style={modalInputStyle}
-                    value={addForm.name}
-                    onChange={(e) =>
-                      handleAddChange("name", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Posisi</label>
-                  <input
-                    style={modalInputStyle}
-                    value={addForm.position}
-                    onChange={(e) =>
-                      handleAddChange("position", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Gender</label>
-                  <select
-                    style={modalInputStyle}
-                    value={addForm.gender}
-                    onChange={(e) =>
-                      handleAddChange("gender", e.target.value)
-                    }
-                    required
-                  >
-                    <option value="">Pilih</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Email</label>
-                  <input
-                    style={modalInputStyle}
-                    type="email"
-                    value={addForm.email}
-                    onChange={(e) =>
-                      handleAddChange("email", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div style={{ ...modalFieldStyle, gridColumn: "1 / -1" }}>
-                  <label style={modalLabelStyle}>Alamat</label>
-                  <input
-                    style={modalInputStyle}
-                    value={addForm.address}
-                    onChange={(e) =>
-                      handleAddChange("address", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Salary Amount</label>
-                  <input
-                    style={modalInputStyle}
-                    type="number"
-                    step="0.01"
-                    value={addForm.salaryAmount}
-                    onChange={(e) =>
-                      handleAddChange("salaryAmount", e.target.value)
-                    }
-                  />
-                </div>
-
-                {/* Birth Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Birth Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={addForm.birthDate}
-                    onChange={(e) => handleAddChange("birthDate", e.target.value)}
-                  />
-                </div>
-
-                {/* Join Work Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Join Work Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={addForm.joinWorkDt}
-                    onChange={(e) => handleAddChange("joinWorkDt", e.target.value)}
-                  />
-                </div>
-
-                {/* Ticket Buy Date */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Ticket Buy Date</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={addForm.ticketBuyDt}
-                    onChange={(e) => handleAddChange("ticketBuyDt", e.target.value)}
-                  />
-                </div>
-
-                {/* Last Salary Increase */}
-                <div style={modalFieldStyle}>
-                  <label style={modalLabelStyle}>Last Salary Increase</label>
-                  <input
-                    style={modalInputStyle}
-                    type="date"
-                    value={addForm.lastSalaryIncreaseDt}
-                    onChange={(e) => handleAddChange("lastSalaryIncreaseDt", e.target.value)}
-                  />
-                </div>
-
-              </div>
-
-              <div style={modalFooterStyle}>
-                <button
-                  type="button"
-                  style={modalSecondaryButtonStyle}
-                  onClick={closeAddModal}
-                  disabled={isAdding}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  style={modalPrimaryButtonStyle}
-                  disabled={isAdding}
-                >
-                  {isAdding ? "Menyimpan..." : "Tambah User"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL KONFIRMASI DELETE */}
-      {confirmDeleteItem && (
-        <div style={modalBackdropStyle} onClick={handleCancelDelete}>
-          <div
-            style={modalCardStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={modalHeaderStyle}>
-              <div>
-                <div style={modalTitleStyle}>Konfirmasi Hapus</div>
-                <div style={sectionSubtitleStyle}>
-                  {confirmDeleteItem.name} — {confirmDeleteItem.email}
-                </div>
-              </div>
-              <button
-                type="button"
-                style={modalCloseButtonStyle}
-                onClick={handleCancelDelete}
-              >
-                ×
-              </button>
-            </div>
-
-            <p style={infoTextStyle}>
-              Data user ini akan dihapus dari Tikus Dashboard. Aksi ini tidak
-              bisa dibatalkan.
-            </p>
-
-            <div style={{ ...modalFooterStyle, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                style={modalSecondaryButtonStyle}
-                onClick={handleCancelDelete}
-                disabled={
-                  deletingEmail ===
-                  (confirmDeleteItem && confirmDeleteItem.email)
-                }
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...modalPrimaryButtonStyle,
-                  background:
-                    "linear-gradient(135deg, #ef4444 0%, #f97316 40%, #facc15 100%)",
-                  color: "#0b1120",
-                }}
-                onClick={handleConfirmDelete}
-                disabled={
-                  deletingEmail ===
-                  (confirmDeleteItem && confirmDeleteItem.email)
-                }
-              >
-                {deletingEmail ===
-                (confirmDeleteItem && confirmDeleteItem.email)
-                  ? "Menghapus..."
-                  : "Ya, hapus"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-    </main>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

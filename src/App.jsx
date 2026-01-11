@@ -12,6 +12,7 @@ import ProfileAdminPage from "./pages/ProfileAdminPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import BankInfoPage from "./pages/BankInfoPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
+import ExpensePage from "./pages/ExpensePage.jsx";
 
 
 function App() {
@@ -48,6 +49,15 @@ function App() {
       />
 
       <Route
+        path="/expense"
+        element={
+          <ProtectedRoute>
+            <ExpensePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
@@ -64,7 +74,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
     </Routes>
   );

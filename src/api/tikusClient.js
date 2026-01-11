@@ -1,284 +1,108 @@
 // src/api/tikusClient.js
-
 const BASE_URL = "/api";
 
+async function postJson(path, payload) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload ?? {}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    const msg = data?.remark || data?.message || `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+
+  // most endpoints use status: "00" for success
+  if (data?.status && data.status !== "00") {
+    // Some older endpoints might use "09" for success; keep compatibility.
+    const okAlt = data.status === "09" && /success/i.test(String(data.remark || ""));
+    if (!okAlt) throw new Error(data?.remark || "Request failed");
+  }
+
+  return data;
+}
+
 // =======================
-// REGISTER TKD0100
+// BRANCH (BROxxxx)
 // =======================
-// payload = { name, address, gender, birthDate, position, email, passwordCredential }
+export async function insertBranchBro0100(payload) {
+  // { branchName }
+  return postJson("/insertBranch/bro0100", payload);
+}
+
+export async function editBranchBro0200(payload) {
+  // { branchId, branchName }
+  return postJson("/editBranch/bro0200", payload);
+}
+
+export async function deleteBranchBro0300(payload) {
+  // { branchId }
+  return postJson("/deleteBranch/bro0300", payload);
+}
+
+export async function getAllBranchBro0400() {
+  // backend expects a body
+  return postJson("/getAllBranch/bro0400", { getAllBranch: "GetAllData" });
+}
+
+// =======================
+// TKD MEMBER (TKDxxxx)
+// =======================
 export async function registerTkd0100(payload) {
-  const response = await fetch(`${BASE_URL}/register/tkd0100`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  // full payload from your spec
+  return postJson("/register/tkd0100", payload);
+}
 
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data.message) {
-        message = data.message;
-      }
-    } catch (_) {
-    }
-    throw new Error(message);
-  }
+export async function getAllDataTkd0200() {
+  return postJson("/getAllData/tkd0200", { showAllData: "" });
+}
 
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
+export async function updateTkd0300(payload) {
+  return postJson("/updateData/tkd0300", payload);
+}
+
+export async function deleteTkd0400(payload) {
+  return postJson("/deleteData/tkd0400", payload);
 }
 
 // =======================
-// LOGIN TKD0200
+// ATM / BANK INFO (ATMxxxx)
 // =======================
-// endpoint: http://localhost:8080/api/login/tkd0200
-// payload = { email, password }
-export async function loginTkd0200(payload) {
-  const response = await fetch(`${BASE_URL}/login/tkd0200`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = "";
-
-    try {
-      const data = await response.json();
-      message = data?.remark || data?.message || "";
-    } catch (_) {
-    }
-
-    if (!message) {
-      const isOtpFlow = payload?.verifyOtp === true;
-
-      if ([400, 401, 403].includes(response.status)) {
-        message = isOtpFlow
-          ? "OTP salah atau sudah kedaluwarsa."
-          : "Email atau password salah.";
-      } else {
-        message = "Terjadi kesalahan saat login. Coba lagi.";
-      }
-    }
-
-    throw new Error(message);
-  }
-
-  const data = await response.json();
-  // contoh sukses:
-  // { "status": "00", "remark": "Validating Auth Complete" }
-  return data;
-}
-
-// =======================
-// RESET / FORGOT PASSWORD TKD0300
-// =======================
-// endpoint: http://localhost:8080/api/reset/tkd0300
-// VERIFY_EMAIL:
-// {
-//   "email": "johndoe@example.com",
-//   "procType": "VERIFY_EMAIL",
-//   "newPassword": ""
-// }
-//
-// CHANGE_PASS:
-// {
-//   "email": "johndoe@example.com",
-//   "procType": "CHANGE_PASS",
-//   "newPassword": "root"
-// }
-export async function resetTkd0300(payload) {
-  const response = await fetch(`${BASE_URL}/reset/tkd0300`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data.message) {
-        message = data.message;
-      }
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  const data = await response.json();
-  // contoh sukses:
-  // VERIFY_EMAIL: { "status": "00", "remark": "Email Correct" }
-  // CHANGE_PASS:  { "status": "00", "remark": "Success Change Password" }
-  return data;
-}
-
-export async function getAllDataTkd0400() {
-  const response = await fetch(`${BASE_URL}/getAllData/tkd0400`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ showAllData: "" }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data;
-}
-
-// =======================
-// UPDATE TKD0500
-// =======================
-// payload = { address, gender, name, position, email, trxAmt }
-export async function updateTkd0500(payload) {
-  const response = await fetch(`${BASE_URL}/updateData/tkd0500`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data.remark || data.message) {
-        message = data.remark || data.message;
-      }
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  const data = await response.json(); // { status, remark }
-  return data;
-}
-
-// =======================
-// DELETE TKD0600
-// =======================
-// payload = { email, status: "00" }
-export async function deleteTkd0600(payload) {
-  const response = await fetch(`${BASE_URL}/deleteData/tkd0600`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      if (data.remark || data.message) {
-        message = data.remark || data.message;
-      }
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  const data = await response.json(); // { status, remark }
-  return data;
-}
-
-// =======================
-// ATM APIs (ATM0100 - ATM0400)
-// =======================
-
-// ADD ATM0100
-// payload = { nomorRekening, bank, owner, amount }
 export async function addAtmAtm0100(payload) {
-  const response = await fetch(`${BASE_URL}/addAtm/atm0100`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data?.remark || data?.message || message;
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  return await response.json();
+  return postJson("/addAtm/atm0100", payload);
 }
 
-// GET ALL ATM0200
-// payload = { getAllData: "" }
-export async function getAllAtmAtm0200(payload = { getAllData: "" }) {
-  const response = await fetch(`${BASE_URL}/getAllAtmData/atm0200`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data?.remark || data?.message || message;
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  return await response.json();
+export async function getAllAtmAtm0200() {
+  return postJson("/getAllAtmData/atm0200", { getAllData: "getAll" });
 }
 
-// EDIT ATM0300
-// payload = { id, nomorRekening, bank, owner, amount }
 export async function editAtmAtm0300(payload) {
-  const response = await fetch(`${BASE_URL}/editAtmData/atm0300`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data?.remark || data?.message || message;
-    } catch (_) {}
-    throw new Error(message);
-  }
-
-  return await response.json();
+  return postJson("/editAtmData/atm0300", payload);
 }
 
-// DELETE ATM0400
-// payload = { atmId: "4" }
 export async function deleteAtmAtm0400(payload) {
-  const response = await fetch(`${BASE_URL}/deleteAtm/atm0400`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  // { atmId }
+  return postJson("/deleteAtm/atm0400", payload);
+}
 
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data?.remark || data?.message || message;
-    } catch (_) {}
-    throw new Error(message);
-  }
+// =======================
+// EXPENSE (EXPxxxx)
+// =======================
+export async function insertExpenseExp0100(payload) {
+  return postJson("/insertExpense/exp0100", payload);
+}
 
-  return await response.json();
+export async function editExpenseExp0200(payload) {
+  return postJson("/editExpense/exp0200", payload);
+}
+
+export async function deleteExpenseExp0300(payload) {
+  return postJson("/deleteExpense/exp0300", payload);
+}
+
+export async function getAllExpenseExp0400() {
+  return postJson("/getAllExpense/exp0400", { getAllData: "" });
 }
