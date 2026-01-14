@@ -736,7 +736,7 @@ function HomePage() {
                             <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(148,163,184,0.12)" }}>
                               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
                                 <div>
-                                  <div style={label}>Alamat</div>
+                                  <div style={label}>Tiket</div>
                                   <div style={{ fontWeight: 650, fontSize: 12.8 }}>{m.address || "-"}</div>
                                 </div>
                                 <div>
@@ -896,7 +896,7 @@ function HomePage() {
                 </div>
 
                 <div style={field}>
-                  <div style={label}>Address</div>
+                  <div style={label}>Tiket</div>
                   <input style={input} value={memberForm.address} onChange={(e) => setMemberForm((p) => ({ ...p, address: e.target.value }))} />
                 </div>
 
