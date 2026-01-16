@@ -715,9 +715,9 @@ const donutData = useMemo(() => {
       {/* TOP BAR */}
       <header style={topBarStyle}>
         <div style={brandWrapperStyle}>
-          <div style={logoCircleStyle}>TK</div>
+          <div style={logoCircleStyle}>727</div>
           <div>
-            <div style={brandTitleStyle}>Tikus Dashboard</div>
+            <div style={brandTitleStyle}>GROUP</div>
             <div style={brandSubtitleStyle}>Monitor Your Data Realtime</div>
           </div>
         </div>

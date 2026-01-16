@@ -87,6 +87,14 @@ export async function deleteAtmAtm0400(payload) {
 }
 
 // =======================
+// =======================
+// KTP UPLOAD (ATM0500)
+// =======================
+export async function uploadKtpAtm0500(payload) {
+  // { atmId, ktpImage: base64String }
+  return postJson("/uploadKtp/atm0500", payload);
+}
+
 // EXPENSE (EXPxxxx)
 // =======================
 export async function insertExpenseExp0100(payload) {

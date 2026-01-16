@@ -51,7 +51,7 @@ const input = {
   padding: "12px 12px",
   borderRadius: 14,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--input-bg)",
   color: "var(--text)",
   outline: "none",
 };
@@ -80,7 +80,7 @@ const badge = {
   padding: "8px 12px",
   borderRadius: 999,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--badge-bg)",
   color: "var(--text)",
   fontWeight: 700,
   fontSize: 12.5,
@@ -299,10 +299,10 @@ export default function ExpensePage() {
             display: "grid", placeItems: "center",
             color: "#071021", fontWeight: 900,
           }}>
-            TK
+            727
           </div>
           <div>
-            <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>TIKUS DASHBOARD</div>
+            <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>GROUP</div>
             <div style={{ fontSize: 12.5, color: "var(--card-text-sub)" }}>Monitor Your Data Realtime</div>
           </div>
         </div>
@@ -319,15 +319,15 @@ export default function ExpensePage() {
       </div>
 
       {/* HERO */}
-      <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "rgba(2,6,23,0.35)", backdropFilter: "blur(14px)" }}>
-        <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>COMPANY PROFILES</div>
+      <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "var(--panel-bg)", backdropFilter: "blur(14px)" }}>
+        <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>PROFILES</div>
         <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
           <h1 style={{ fontSize: 44, lineHeight: 1.05, margin: 0, fontWeight: 900 }}>
-            MONITORING <span style={{ color: "#38bdf8" }}>MY COMPANY</span>.
+            EXPENSE GROUP <span style={{ color: "#38bdf8" }}>727</span>.
           </h1>
         </div>
 
-        <div style={{ marginTop: 8, color: "var(--card-text-sub)", fontSize: 13.5 }}>Kelola pengeluaran (Expense)</div>
+        <div style={{ marginTop: 8, color: "var(--card-text-sub)", fontSize: 13.5 }}>Kelola pengeluaran </div>
 
         <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button style={pillBtn(false)} onClick={() => navigate("/home")}>TEAM INFORMATION</button>

@@ -6,6 +6,7 @@ import {
   getAllAtmAtm0200,
   editAtmAtm0300,
   deleteAtmAtm0400,
+  uploadKtpAtm0500,
 } from "../api/tikusClient.js";
 import { clearSession } from "../utils/auth.js";
 
@@ -24,6 +25,33 @@ function toDateInput(value) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+
+function dataUrlFromMaybeBase64(value) {
+  if (!value) return "";
+  const s = String(value);
+  if (s.startsWith("data:")) return s;
+  const head = s.slice(0, 12);
+  let mime = "image/jpeg";
+  if (head.startsWith("iVBORw0")) mime = "image/png";
+  else if (head.startsWith("/9j")) mime = "image/jpeg";
+  else if (head.startsWith("R0lGOD")) mime = "image/gif";
+  else if (head.startsWith("UklGR")) mime = "image/webp";
+  return "data:" + mime + ";base64," + s;
+}
+
+function fileToBase64Bytes(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error || new Error("Gagal baca file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 
 const primaryCtaStyle = {
   padding: "0.75rem 1.4rem",
@@ -62,7 +90,7 @@ const input = {
   padding: "12px 12px",
   borderRadius: 14,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--input-bg)",
   color: "var(--text)",
   outline: "none",
 };
@@ -91,7 +119,7 @@ const badge = {
   padding: "8px 12px",
   borderRadius: 999,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--badge-bg)",
   color: "var(--text)",
   fontWeight: 700,
   fontSize: 12.5,
@@ -185,6 +213,9 @@ export default function BankInfoPage() {
   // data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [ktpBusyId, setKtpBusyId] = useState(null);
+
 
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => {
@@ -232,6 +263,31 @@ export default function BankInfoPage() {
     setItems(list);
     return list;
   }
+  const pickAndUploadKtp = (atmId) => {
+    if (!atmId) return;
+    const inputEl = document.createElement("input");
+    inputEl.type = "file";
+    inputEl.accept = "image/*";
+    inputEl.onchange = async (e) => {
+      const file = e?.target?.files?.[0];
+      if (!file) return;
+      try {
+        setInfo("");
+        setError("");
+        setKtpBusyId(atmId);
+        const base64 = await fileToBase64Bytes(file);
+        await uploadKtpAtm0500({ atmId: Number(atmId), ktpImage: base64 });
+        setInfo("SUCCESS UPLOAD KTP");
+        await reloadAtm();
+      } catch (err) {
+        setError(err?.message || "Gagal upload KTP");
+      } finally {
+        setKtpBusyId(null);
+      }
+    };
+    inputEl.click();
+  };
+
 
   useEffect(() => {
     let alive = true;
@@ -414,10 +470,10 @@ export default function BankInfoPage() {
               fontWeight: 900,
             }}
           >
-            TK
+            727
           </div>
           <div>
-            <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>TIKUS DASHBOARD</div>
+            <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>GROUP</div>
             <div style={{ fontSize: 12.5, color: "var(--card-text-sub)" }}>Monitor Your Data Realtime</div>
           </div>
         </div>
@@ -444,14 +500,14 @@ export default function BankInfoPage() {
           padding: "22px 24px",
           borderRadius: 22,
           border: "1px solid var(--card-border)",
-          background: "rgba(2,6,23,0.35)",
+          background: "var(--panel-bg)",
           backdropFilter: "blur(14px)",
         }}
       >
-        <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>COMPANY PROFILES</div>
+        <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>PROFILES</div>
         <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
           <h1 style={{ fontSize: 44, lineHeight: 1.05, margin: 0, fontWeight: 900 }}>
-            MONITORING <span style={{ color: "#38bdf8" }}>MY COMPANY</span>.
+            BANK INFO <span style={{ color: "#38bdf8" }}>727</span>.
           </h1>
         </div>
 
@@ -551,6 +607,23 @@ export default function BankInfoPage() {
           </div>
         ) : null}
 
+        {!loading && info ? (
+          <div
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              border: "1px solid rgba(34,197,94,0.35)",
+              background: "rgba(34,197,94,0.10)",
+              color: "rgba(34,197,94,0.95)",
+              fontWeight: 700,
+            }}
+          >
+            {info}
+          </div>
+        ) : null}
+
+
         {/* TABLE */}
         <div style={{ marginTop: 14, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
@@ -600,6 +673,13 @@ export default function BankInfoPage() {
                         </button>
                         <button style={smallBtn()} onClick={() => openEdit(it)}>
                           Update
+                        </button>
+                        <button
+                          style={smallBtn()}
+                          onClick={() => pickAndUploadKtp(it.id ?? it.atmId)}
+                          disabled={ktpBusyId === (it.id ?? it.atmId)}
+                        >
+                          {ktpBusyId === (it.id ?? it.atmId) ? "Uploading..." : "🪪 KTP"}
                         </button>
                         <button style={smallBtn("danger")} onClick={() => setConfirmDelete({ id: it.id, rekeningNm: it.rekeningNm })}>
                           Delete
@@ -866,6 +946,37 @@ export default function BankInfoPage() {
                   ✕
                 </button>
               </div>
+            </div>
+
+            <div style={{ marginTop: 12, ...card, padding: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900 }}>KTP Image</div>
+                <button
+                  style={smallBtn()}
+                  onClick={() => pickAndUploadKtp(detailItem.id ?? detailItem.atmId)}
+                  disabled={ktpBusyId === (detailItem.id ?? detailItem.atmId)}
+                >
+                  {ktpBusyId === (detailItem.id ?? detailItem.atmId) ? "Uploading..." : "🪪 Upload / Replace"}
+                </button>
+              </div>
+
+              {detailItem.ktpImage ? (
+                <img
+                  src={dataUrlFromMaybeBase64(detailItem.ktpImage)}
+                  alt="KTP"
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    maxHeight: 320,
+                    objectFit: "contain",
+                    borderRadius: 14,
+                    border: "1px solid var(--card-border)",
+                    background: "rgba(0,0,0,0.03)",
+                  }}
+                />
+              ) : (
+                <div style={{ marginTop: 10, color: "var(--card-text-sub)", fontSize: 13.5 }}>Belum ada KTP yang diupload.</div>
+              )}
             </div>
 
             <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>

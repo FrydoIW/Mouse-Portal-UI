@@ -103,7 +103,7 @@ const input = {
   padding: "12px 12px",
   borderRadius: 14,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--input-bg)",
   color: "var(--text)",
   outline: "none",
 };
@@ -135,7 +135,7 @@ const badge = {
   padding: "8px 12px",
   borderRadius: 999,
   border: "1px solid var(--card-border)",
-  background: "rgba(2, 6, 23, 0.25)",
+  background: "var(--badge-bg)",
   color: "var(--text)",
   fontWeight: 700,
   fontSize: 12.5,
@@ -504,10 +504,10 @@ function HomePage() {
               display: "grid", placeItems: "center",
               color: "#071021", fontWeight: 900,
             }}>
-              TK
+              727
             </div>
             <div>
-              <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>TIKUS DASHBOARD</div>
+              <div style={{ fontWeight: 900, letterSpacing: 0.6 }}>GROUP</div>
               <div style={{ fontSize: 12.5, color: "var(--card-text-sub)" }}>Monitor Your Data Realtime</div>
             </div>
           </div>
@@ -524,17 +524,17 @@ function HomePage() {
         </div>
 
         {/* HERO */}
-        <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "rgba(2,6,23,0.35)", backdropFilter: "blur(14px)" }}>
+        <div style={{ marginTop: 20, padding: "22px 24px", borderRadius: 22, border: "1px solid var(--card-border)", background: "var(--panel-bg)", backdropFilter: "blur(14px)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 0.95fr)", gap: 18, alignItems: "stretch" }}>
             <div>
-              <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>COMPANY PROFILES</div>
+              <div style={{ fontSize: 12, letterSpacing: 2.3, color: "rgba(148,163,184,0.9)", fontWeight: 800 }}>PROFILES</div>
               <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 12 }}>
                 <h1 style={{ fontSize: 44, lineHeight: 1.05, margin: 0, fontWeight: 900 }}>
-                  MONITORING <span style={{ color: "#38bdf8" }}>MY COMPANY</span>.
+                  MONITORING <span style={{ color: "#38bdf8" }}>727 GROUP</span>.
                 </h1>
               </div>
 
-              <p style={{ marginTop: 8, ...sectionSub }}>MY TEAM OVERVIEW</p>
+              <p style={{ marginTop: 8, ...sectionSub }}>727 GROUP TEAM OVERVIEW</p>
 
               <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button style={pillBtn(true)} disabled>TEAM INFORMATION</button>
@@ -570,11 +570,11 @@ function HomePage() {
               </div>
 
               <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "rgba(2,6,23,0.25)" }}>
+                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "var(--input-bg)" }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(226,232,240,0.75)" }}>Salary</div>
                   <div style={{ marginTop: 4, fontWeight: 900 }}>Rp {formatIdr(branchManagerCard?.salaryAmt)}</div>
                 </div>
-                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "rgba(2,6,23,0.25)" }}>
+                <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(234,179,8,0.25)", background: "var(--input-bg)" }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(226,232,240,0.75)" }}>Join</div>
                   <div style={{ marginTop: 4, fontWeight: 900 }}>{branchManagerCard?.joinWorkDt || "-"}</div>
                 </div>
