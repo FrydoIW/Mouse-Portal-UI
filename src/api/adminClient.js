@@ -138,3 +138,37 @@ export async function editProfileAdm0500(payload) {
 export async function editEmailEma0300(payload) {
   return apiFetch("/editMail/ema0300", { method: "POST", body: payload });
 }
+
+// =======================
+// WORKSPACE (WSPxxxx)
+// =======================
+// (1) ADD ADMIN TO WORKSPACE (wsp0100)
+// POST /api/insert/wsp0100
+// body: { workspaceId, email }
+export async function addAdminToWorkspaceWsp0100(payload) {
+  return apiFetch("/insert/wsp0100", { method: "POST", body: payload });
+}
+
+// (2) EDIT WORKSPACE NAME (wsp0200)
+// POST /api/edit/wsp0200
+// body: { workspaceId, workspaceName }
+export async function editWorkspaceNameWsp0200(payload) {
+  return apiFetch("/edit/wsp0200", { method: "POST", body: payload });
+}
+
+// (3) GET ALL WORKSPACES FOR ADMIN (wsp0300)
+// POST /api/getAllData/wsp0300
+// body: { adminEmail }
+export async function getAllWorkspaceByAdminWsp0300(adminEmail) {
+  return apiFetch("/getAllData/wsp0300", {
+    method: "POST",
+    body: { adminEmail },
+  });
+}
+
+// (4) DELETE WORKSPACE (wsp0400)
+// POST /api/delete/wsp0400
+// body: { workspaceId, adminId }
+export async function deleteWorkspaceWsp0400(payload) {
+  return apiFetch("/delete/wsp0400", { method: "POST", body: payload });
+}

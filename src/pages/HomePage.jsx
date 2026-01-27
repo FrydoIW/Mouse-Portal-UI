@@ -13,6 +13,7 @@ import {
   updateTkd0300,
   deleteTkd0400,
 } from "../api/tikusClient.js";
+import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
 
 const POSITION_OPTIONS = [
@@ -294,6 +295,12 @@ function HomePage() {
     return branches.find((b) => Number(b.branchId) === id) || null;
   }, [branches, selectedBranchId]);
 
+  // Keep workspaceId cache for insert branch payload (new backend requirement)
+  useEffect(() => {
+    const wsId = selectedBranch?.workspaceId;
+    if (wsId) localStorage.setItem("tk-workspaceId", String(wsId));
+  }, [selectedBranch]);
+
   const filteredMembers = useMemo(() => {
     const id = Number(selectedBranchId);
     const q = searchQuery.trim().toLowerCase();
@@ -379,7 +386,27 @@ function HomePage() {
     try {
       setBranchBusy(true);
       if (branchModal?.mode === "add") {
-        await insertBranchBro0100({ branchName: name });
+        let workspaceId =
+          selectedBranch?.workspaceId ||
+          localStorage.getItem("tk-workspaceId") ||
+          "";
+
+        if (!workspaceId && email) {
+          try {
+            const wsRes = await getAllWorkspaceByAdminWsp0300(email);
+            const wsList = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
+            workspaceId = wsList?.[0]?.workspaceId || "";
+            if (workspaceId) localStorage.setItem("tk-workspaceId", String(workspaceId));
+          } catch (_) {
+            // ignore, handled by validation below
+          }
+        }
+
+        if (!workspaceId) {
+          throw new Error("Workspace belum tersedia. Buka Profile Admin → Workspaces dan pilih workspace dulu.");
+        }
+
+        await insertBranchBro0100({ branchName: name, workspaceId });
         setToast({ type: "success", text: "Branch berhasil ditambahkan." });
       } else if (branchModal?.mode === "edit") {
         await editBranchBro0200({ branchId: selectedBranch?.branchId, branchName: name });

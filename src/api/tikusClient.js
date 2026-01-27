@@ -29,7 +29,7 @@ async function postJson(path, payload) {
 // BRANCH (BROxxxx)
 // =======================
 export async function insertBranchBro0100(payload) {
-  // { branchName }
+  // { branchName, workspaceId }
   return postJson("/insertBranch/bro0100", payload);
 }
 
