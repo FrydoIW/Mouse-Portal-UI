@@ -712,9 +712,9 @@ export default function ProfileAdminPage() {
       </div>
 
       <div style={cardStyle}>
-        <h2 style={{ fontWeight: 900, marginBottom: 6 }}>Profile Admin</h2>
+        <h2 style={{ fontWeight: 900, marginBottom: 6 }}>Profile</h2>
         <div style={{ opacity: 0.75, marginBottom: 14 }}>
-          Edit data profile (adm0500) dan email (ema0300 + verifikasi email).
+          Your Profile Management ^^
         </div>
 
         {error && <p className="auth-error">{error}</p>}
@@ -845,7 +845,7 @@ export default function ProfileAdminPage() {
       <div style={cardStyle}>
         <h2 style={{ fontWeight: 900, marginBottom: 6 }}>Workspaces</h2>
         <div style={{ opacity: 0.75, marginBottom: 14 }}>
-          Manajemen workspace & admin per workspace (WSP01xx) + mapping branch by workspace.
+          Workspace Management & Information
         </div>
 
         {wsError && <p className="auth-error">{wsError}</p>}
@@ -950,14 +950,14 @@ export default function ProfileAdminPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
                   <button style={secondaryBtn} onClick={onInquiryAdmin} disabled={inquiryBusy}>
-                    {inquiryBusy ? "Mencari..." : "Cari (Inquiry ADM0600)"}
+                    {inquiryBusy ? "Mencari..." : "Find Mail"}
                   </button>
                   <button
                     style={primaryBtn}
                     onClick={onAddAdminToWorkspace}
                     disabled={!inquiryResult || addWsAdminBusy}
                   >
-                    {addWsAdminBusy ? "Menambah..." : "Add ke Workspace (WSP0100)"}
+                    {addWsAdminBusy ? "Menambah..." : "Add ke Workspace"}
                   </button>
                 </div>
               </div>
