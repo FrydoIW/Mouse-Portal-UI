@@ -1,6 +1,6 @@
 // src/pages/HomePage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   // BRANCH
   getAllBranchBro0400,
@@ -184,7 +184,19 @@ const label = { fontSize: 12.5, color: "var(--card-text-sub)", fontWeight: 700 }
 
 function HomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const email = localStorage.getItem("authEmail") || "";
+
+  // Workspace scope (via query param atau cache)
+  const wsFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("workspaceId") || "").trim();
+  }, [location.search]);
+
+  const branchFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("branchId") || "").trim();
+  }, [location.search]);
 
   // THEME
   const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
@@ -198,6 +210,11 @@ function HomePage() {
   // DATA
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [workspaceValid, setWorkspaceValid] = useState(true);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() =>
+    String(localStorage.getItem("tk-workspaceId") || "").trim()
+  );
 
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => {
@@ -247,18 +264,28 @@ function HomePage() {
 
   const [confirmDelete, setConfirmDelete] = useState(null); // {type:'branch'|'member', payload}
 
-  async function reloadBranches() {
+  async function reloadBranches(scopeWorkspaceId = activeWorkspaceId) {
+    if (!scopeWorkspaceId) {
+      setBranches([]);
+      return [];
+    }
+
     const res = await getAllBranchBro0400();
-    const list = Array.isArray(res?.resultList) ? res.resultList : [];
-    setBranches(list);
-    return list;
+    const all = Array.isArray(res?.resultList) ? res.resultList : [];
+    const scoped = all.filter((b) => String(b.workspaceId || "").trim() === String(scopeWorkspaceId).trim());
+    setBranches(scoped);
+    return scoped;
   }
 
-  async function reloadMembers() {
+  async function reloadMembers(allowedBranchIds) {
     const res = await getAllDataTkd0200();
-    const list = Array.isArray(res?.resultList) ? res.resultList : [];
+    const all = Array.isArray(res?.resultList) ? res.resultList : [];
+    const filtered = allowedBranchIds
+      ? all.filter((m) => allowedBranchIds.has(Number(m.branchId)))
+      : all;
+
     // normalize positions for consistent grouping
-    const normalized = list.map((x) => ({ ...x, position: normalizePosition(x.position) }));
+    const normalized = filtered.map((x) => ({ ...x, position: normalizePosition(x.position) }));
     setMembers(normalized);
     return normalized;
   }
@@ -269,18 +296,77 @@ function HomePage() {
       try {
         setLoading(true);
         setError("");
-        const [b] = await Promise.all([reloadBranches(), reloadMembers()]);
-        if (!alive) return;
-        const firstId = b?.[0]?.branchId ?? "";
-        const stored = localStorage.getItem("tk-branchId");
-        const pick = stored ? Number(stored) : firstId;
-        if (pick && !selectedBranchId) {
-          setSelectedBranchId(pick);
-          localStorage.setItem("tk-branchId", String(pick));
+
+        // Reset state dulu biar tidak ada data "sisa" dari workspace lain
+        setBranches([]);
+        setMembers([]);
+
+        // 1) validasi workspace user (wsp0300)
+        const wsRes = email ? await getAllWorkspaceByAdminWsp0300(email) : { resultList: [] };
+        const wsRows = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
+        const allowedWorkspaceIds = Array.from(
+          new Set(wsRows.map((r) => String(r.workspaceId || "").trim()).filter(Boolean))
+        );
+
+        // resolve workspace yang diminta (url > cache > first)
+        const cachedWsId = String(localStorage.getItem("tk-workspaceId") || "").trim();
+        let candidateWsId = "";
+        if (cachedWsId && allowedWorkspaceIds.includes(cachedWsId)) candidateWsId = cachedWsId;
+        else if (wsFromUrl && allowedWorkspaceIds.includes(String(wsFromUrl).trim())) candidateWsId = String(wsFromUrl).trim();
+        else if (allowedWorkspaceIds.length === 1) candidateWsId = allowedWorkspaceIds[0];
+
+        const wsOk = !!candidateWsId;
+
+        if (!wsOk) {
+          // workspace tidak valid untuk user
+          localStorage.removeItem("tk-workspaceId");
+          localStorage.removeItem("tk-branchId");
+          if (!alive) return;
+          setWorkspaceValid(false);
+          setActiveWorkspaceId("");
+          setSelectedBranchId("");
+          setBranches([]);
+          setMembers([]);
+          return;
         }
+
+        // workspace valid
+        localStorage.setItem("tk-workspaceId", candidateWsId);
+        if (!alive) return;
+        setWorkspaceValid(true);
+        setActiveWorkspaceId(candidateWsId);
+
+        // 2) load branches scoped by workspace
+        const b = await reloadBranches(candidateWsId);
+        if (!alive) return;
+
+        // 3) resolve branch yang diminta (url > cache > first)
+        const candidateBranchIdRaw = String(branchFromUrl || localStorage.getItem("tk-branchId") || "").trim();
+        const candidateBranchId = candidateBranchIdRaw ? Number(candidateBranchIdRaw) : "";
+        const firstBranchId = b?.[0]?.branchId ?? "";
+        let pickBranchId = candidateBranchId || firstBranchId || "";
+
+        if (pickBranchId && !b.some((x) => Number(x.branchId) === Number(pickBranchId))) {
+          pickBranchId = firstBranchId || "";
+        }
+
+        if (pickBranchId) {
+          setSelectedBranchId(pickBranchId);
+          localStorage.setItem("tk-branchId", String(pickBranchId));
+        } else {
+          setSelectedBranchId("");
+          localStorage.removeItem("tk-branchId");
+        }
+
+        // 4) load members lalu filter by branch yang ada di workspace ini
+        const allowedBranchIds = new Set((b || []).map((x) => Number(x.branchId)));
+        await reloadMembers(allowedBranchIds);
       } catch (e) {
         if (!alive) return;
         setError(e?.message || "Gagal mengambil data");
+        setWorkspaceValid(false);
+        setBranches([]);
+        setMembers([]);
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -288,18 +374,12 @@ function HomePage() {
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [email, wsFromUrl, branchFromUrl]);
 
   const selectedBranch = useMemo(() => {
     const id = Number(selectedBranchId);
     return branches.find((b) => Number(b.branchId) === id) || null;
   }, [branches, selectedBranchId]);
-
-  // Keep workspaceId cache for insert branch payload (new backend requirement)
-  useEffect(() => {
-    const wsId = selectedBranch?.workspaceId;
-    if (wsId) localStorage.setItem("tk-workspaceId", String(wsId));
-  }, [selectedBranch]);
 
   const filteredMembers = useMemo(() => {
     const id = Number(selectedBranchId);
@@ -386,24 +466,10 @@ function HomePage() {
     try {
       setBranchBusy(true);
       if (branchModal?.mode === "add") {
-        let workspaceId =
-          selectedBranch?.workspaceId ||
-          localStorage.getItem("tk-workspaceId") ||
-          "";
+        const workspaceId = String(activeWorkspaceId || "").trim();
 
-        if (!workspaceId && email) {
-          try {
-            const wsRes = await getAllWorkspaceByAdminWsp0300(email);
-            const wsList = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
-            workspaceId = wsList?.[0]?.workspaceId || "";
-            if (workspaceId) localStorage.setItem("tk-workspaceId", String(workspaceId));
-          } catch (_) {
-            // ignore, handled by validation below
-          }
-        }
-
-        if (!workspaceId) {
-          throw new Error("Workspace belum tersedia. Buka Profile Admin → Workspaces dan pilih workspace dulu.");
+        if (!workspaceValid || !workspaceId) {
+          throw new Error("Pilih workspace aktif dulu via Profile → Workspaces → Switch Workspace.");
         }
 
         await insertBranchBro0100({ branchName: name, workspaceId });

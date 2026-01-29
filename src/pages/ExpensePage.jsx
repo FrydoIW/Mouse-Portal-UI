@@ -1,6 +1,6 @@
 // src/pages/ExpensePage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   getAllBranchBro0400,
   getAllExpenseExp0400,
@@ -8,6 +8,7 @@ import {
   editExpenseExp0200,
   deleteExpenseExp0300,
 } from "../api/tikusClient.js";
+import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
 
 function toDateInput(value) {
@@ -111,7 +112,18 @@ const modalCard = {
 
 export default function ExpensePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const email = localStorage.getItem("authEmail") || "";
+
+  const wsFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("workspaceId") || "").trim();
+  }, [location.search]);
+
+  const branchFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("branchId") || "").trim();
+  }, [location.search]);
 
   const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
   useEffect(() => {
@@ -122,6 +134,11 @@ export default function ExpensePage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [workspaceValid, setWorkspaceValid] = useState(true);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() =>
+    String(localStorage.getItem("tk-workspaceId") || "").trim()
+  );
 
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => {
@@ -147,26 +164,35 @@ export default function ExpensePage() {
 
   const [confirmDelete, setConfirmDelete] = useState(null); // {id, expenseName}
 
-  async function reloadBranches() {
+  async function reloadBranches(scopeWorkspaceId = activeWorkspaceId) {
+    if (!scopeWorkspaceId) {
+      setBranches([]);
+      return [];
+    }
+
     const res = await getAllBranchBro0400();
-    const list = Array.isArray(res?.resultList) ? res.resultList : [];
-    setBranches(list);
-    return list;
+    const all = Array.isArray(res?.resultList) ? res.resultList : [];
+    const scoped = all.filter((b) => String(b.workspaceId || "").trim() === String(scopeWorkspaceId).trim());
+    setBranches(scoped);
+    return scoped;
   }
 
-  async function reloadExpense(branchIdFallback) {
+  async function reloadExpense(allowedBranchIds) {
     const res = await getAllExpenseExp0400();
     const list = Array.isArray(res?.resultList) ? res.resultList : [];
-    // Beberapa response backend tidak mengembalikan branchId/memo.
-    // Supaya list tetap tampil, kita normalisasi field yang sering kosong.
-    const bid = branchIdFallback ? Number(branchIdFallback) : undefined;
+    // Normalisasi field yang sering kosong.
     const normalized = list.map((it) => ({
       ...it,
-      branchId: it?.branchId ?? bid,
       memo: it?.memo ?? "",
     }));
-    setItems(normalized);
-    return normalized;
+
+    // SECURITY: hanya tampilkan data yang bisa diverifikasi branchId-nya berada di workspace user.
+    const scoped = allowedBranchIds
+      ? normalized.filter((it) => it?.branchId != null && allowedBranchIds.has(Number(it.branchId)))
+      : [];
+
+    setItems(scoped);
+    return scoped;
   }
 
   useEffect(() => {
@@ -175,18 +201,74 @@ export default function ExpensePage() {
       try {
         setLoading(true);
         setError("");
-        const [b] = await Promise.all([reloadBranches(), reloadExpense()]);
-        if (!alive) return;
-        const firstId = b?.[0]?.branchId ?? "";
-        const stored = localStorage.getItem("tk-branchId");
-        const pick = stored ? Number(stored) : firstId;
-        if (pick && !selectedBranchId) {
-          setSelectedBranchId(pick);
-          localStorage.setItem("tk-branchId", String(pick));
+
+        // Reset state dulu biar tidak ada data "sisa" dari workspace lain
+        setBranches([]);
+        setItems([]);
+
+        // 1) validasi workspace user (wsp0300)
+        const wsRes = email ? await getAllWorkspaceByAdminWsp0300(email) : { resultList: [] };
+        const wsRows = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
+        const allowedWorkspaceIds = Array.from(
+          new Set(wsRows.map((r) => String(r.workspaceId || "").trim()).filter(Boolean))
+        );
+
+        const cachedWsId = String(localStorage.getItem("tk-workspaceId") || "").trim();
+        let candidateWsId = "";
+        if (cachedWsId && allowedWorkspaceIds.includes(cachedWsId)) candidateWsId = cachedWsId;
+        else if (wsFromUrl && allowedWorkspaceIds.includes(String(wsFromUrl).trim())) candidateWsId = String(wsFromUrl).trim();
+        else if (allowedWorkspaceIds.length === 1) candidateWsId = allowedWorkspaceIds[0];
+
+        const wsOk = !!candidateWsId;
+
+        if (!wsOk) {
+          localStorage.removeItem("tk-workspaceId");
+          localStorage.removeItem("tk-branchId");
+          if (!alive) return;
+          setWorkspaceValid(false);
+          setActiveWorkspaceId("");
+          setSelectedBranchId("");
+          setBranches([]);
+          setItems([]);
+          return;
         }
+
+        localStorage.setItem("tk-workspaceId", candidateWsId);
+        if (!alive) return;
+        setWorkspaceValid(true);
+        setActiveWorkspaceId(candidateWsId);
+
+        // 2) load branches scoped by workspace
+        const b = await reloadBranches(candidateWsId);
+        if (!alive) return;
+
+        // 3) resolve branch yang diminta (url > cache > first)
+        const candidateBranchIdRaw = String(branchFromUrl || localStorage.getItem("tk-branchId") || "").trim();
+        const candidateBranchId = candidateBranchIdRaw ? Number(candidateBranchIdRaw) : "";
+        const firstBranchId = b?.[0]?.branchId ?? "";
+        let pickBranchId = candidateBranchId || firstBranchId || "";
+
+        if (pickBranchId && !b.some((x) => Number(x.branchId) === Number(pickBranchId))) {
+          pickBranchId = firstBranchId || "";
+        }
+
+        if (pickBranchId) {
+          setSelectedBranchId(pickBranchId);
+          localStorage.setItem("tk-branchId", String(pickBranchId));
+        } else {
+          setSelectedBranchId("");
+          localStorage.removeItem("tk-branchId");
+        }
+
+        // 4) load expense dan filter sesuai branchId yang ada di workspace ini
+        const allowedBranchIds = new Set((b || []).map((x) => Number(x.branchId)));
+        await reloadExpense(allowedBranchIds);
       } catch (e) {
         if (!alive) return;
         setError(e?.message || "Gagal mengambil data");
+        setWorkspaceValid(false);
+        setBranches([]);
+        setItems([]);
       } finally {
         if (!alive) return;
         setLoading(false);
@@ -194,12 +276,16 @@ export default function ExpensePage() {
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [email, wsFromUrl, branchFromUrl]);
 
   const selectedBranch = useMemo(() => {
     const id = Number(selectedBranchId);
     return branches.find((b) => Number(b.branchId) === id) || null;
   }, [branches, selectedBranchId]);
+
+  const allowedBranchIds = useMemo(() => {
+    return new Set((branches || []).map((b) => Number(b.branchId)));
+  }, [branches]);
 
   const filtered = useMemo(() => {
     const id = Number(selectedBranchId);
@@ -223,6 +309,7 @@ export default function ExpensePage() {
   const pickBranch = (val) => {
     setSelectedBranchId(val);
     if (val) localStorage.setItem("tk-branchId", String(val));
+    else localStorage.removeItem("tk-branchId");
   };
 
   const openAdd = () => {
@@ -266,7 +353,7 @@ export default function ExpensePage() {
       } else {
         await editExpenseExp0200(payload);
       }
-      await reloadExpense(selectedBranchId);
+      await reloadExpense(allowedBranchIds);
       closeModal();
     } catch (e) {
       setError(e?.message || "Gagal simpan expense");
@@ -280,7 +367,7 @@ export default function ExpensePage() {
       setBusy(true);
       await deleteExpenseExp0300({ id: String(id) });
       setConfirmDelete(null);
-      await reloadExpense(selectedBranchId);
+      await reloadExpense(allowedBranchIds);
     } catch (e) {
       setError(e?.message || "Gagal hapus expense");
     } finally {
@@ -350,7 +437,7 @@ export default function ExpensePage() {
                   const v = e.target.value;
                   pickBranch(v ? Number(v) : "");
                   // reload supaya data yang tidak punya branchId tetap dianggap ke branch yang dipilih
-                  if (v) reloadExpense(Number(v));
+                  if (v) reloadExpense(allowedBranchIds);
                 }}
               >
                 <option value="">-- pilih branch --</option>
@@ -367,7 +454,7 @@ export default function ExpensePage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button style={smallBtn("primary")} onClick={openAdd}>+ Add Expense</button>
+            <button style={{...smallBtn("primary"), opacity: !workspaceValid || !selectedBranchId ? 0.5 : 1, cursor: !workspaceValid || !selectedBranchId ? "not-allowed" : "pointer"}} onClick={openAdd} disabled={!workspaceValid || !selectedBranchId}>+ Add Expense</button>
             <span style={badge}>{filtered.length} data</span>
           </div>
         </div>

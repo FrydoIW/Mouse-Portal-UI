@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   getAllBranchBro0400,
   addAtmAtm0100,
@@ -8,6 +8,7 @@ import {
   deleteAtmAtm0400,
   uploadKtpAtm0500,
 } from "../api/tikusClient.js";
+import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
 
 function formatIdr(val) {
@@ -199,7 +200,18 @@ const emptyAtmForm = {
 
 export default function BankInfoPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const email = localStorage.getItem("authEmail") || "";
+
+  const wsFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("workspaceId") || "").trim();
+  }, [location.search]);
+
+  const branchFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("branchId") || "").trim();
+  }, [location.search]);
 
   // theme
   const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
@@ -216,6 +228,10 @@ export default function BankInfoPage() {
   const [info, setInfo] = useState("");
   const [ktpBusyId, setKtpBusyId] = useState(null);
 
+  const [workspaceValid, setWorkspaceValid] = useState(true);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() =>
+    String(localStorage.getItem("tk-workspaceId") || "").trim()
+  );
 
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => {
@@ -250,18 +266,26 @@ export default function BankInfoPage() {
     return `${s.slice(0, 2)}••••${s.slice(-2)}`;
   };
 
-  async function reloadBranches() {
+  async function reloadBranches(scopeWorkspaceId = activeWorkspaceId) {
+    if (!scopeWorkspaceId) {
+      setBranches([]);
+      return [];
+    }
     const res = await getAllBranchBro0400();
-    const list = Array.isArray(res?.resultList) ? res.resultList : [];
-    setBranches(list);
-    return list;
+    const all = Array.isArray(res?.resultList) ? res.resultList : [];
+    const scoped = all.filter((b) => String(b.workspaceId || "").trim() === String(scopeWorkspaceId).trim());
+    setBranches(scoped);
+    return scoped;
   }
 
-  async function reloadAtm() {
+  async function reloadAtm(allowedBranchIdsSet) {
     const res = await getAllAtmAtm0200();
-    const list = Array.isArray(res?.resultList) ? res.resultList : [];
-    setItems(list);
-    return list;
+    const all = Array.isArray(res?.resultList) ? res.resultList : [];
+    const scoped = allowedBranchIdsSet
+      ? all.filter((x) => x?.branchId != null && allowedBranchIdsSet.has(Number(x.branchId)))
+      : [];
+    setItems(scoped);
+    return scoped;
   }
   const pickAndUploadKtp = (atmId) => {
     if (!atmId) return;
@@ -278,7 +302,7 @@ export default function BankInfoPage() {
         const base64 = await fileToBase64Bytes(file);
         await uploadKtpAtm0500({ atmId: Number(atmId), ktpImage: base64 });
         setInfo("SUCCESS UPLOAD KTP");
-        await reloadAtm();
+        await reloadAtm(allowedBranchIds);
       } catch (err) {
         setError(err?.message || "Gagal upload KTP");
       } finally {
@@ -295,32 +319,99 @@ export default function BankInfoPage() {
       try {
         setLoading(true);
         setError("");
-        const [b] = await Promise.all([reloadBranches(), reloadAtm()]);
+        setInfo("");
+
+        // reset agar tidak ada data "sisa" dari workspace lain
+        setBranches([]);
+        setItems([]);
+
+        // 1) validasi workspace user (wsp0300)
+        const wsRes = email ? await getAllWorkspaceByAdminWsp0300(email) : { resultList: [] };
+        const wsRows = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
+        const allowedWorkspaceIds = Array.from(
+          new Set(wsRows.map((r) => String(r.workspaceId || "").trim()).filter(Boolean))
+        );
+
+        const cachedWsId = String(localStorage.getItem("tk-workspaceId") || "").trim();
+        let candidateWsId = "";
+        if (cachedWsId && allowedWorkspaceIds.includes(cachedWsId)) candidateWsId = cachedWsId;
+        else if (wsFromUrl && allowedWorkspaceIds.includes(String(wsFromUrl).trim())) candidateWsId = String(wsFromUrl).trim();
+        else if (allowedWorkspaceIds.length === 1) candidateWsId = allowedWorkspaceIds[0];
+
+        const wsOk = !!candidateWsId;
+
+        if (!wsOk) {
+          localStorage.removeItem("tk-workspaceId");
+          localStorage.removeItem("tk-branchId");
+          if (!alive) return;
+          setWorkspaceValid(false);
+          setActiveWorkspaceId("");
+          setSelectedBranchId("");
+          setBranches([]);
+          setItems([]);
+          return;
+        }
+
+        localStorage.setItem("tk-workspaceId", candidateWsId);
         if (!alive) return;
-        const firstId = b?.[0]?.branchId ?? "";
-        const stored = localStorage.getItem("tk-branchId");
-        const pick = stored ? Number(stored) : firstId;
-        if (pick && !selectedBranchId) {
+        setWorkspaceValid(true);
+        setActiveWorkspaceId(candidateWsId);
+
+        // 2) branches scoped by workspace
+        const b = await reloadBranches(candidateWsId);
+        if (!alive) return;
+
+        const allowedBranchIdsSet = new Set((b || []).map((x) => Number(x.branchId)));
+
+        // 3) ATM scoped by allowed branches
+        await reloadAtm(allowedBranchIdsSet);
+        if (!alive) return;
+
+        // 4) resolve branch yang dipilih (url > cache > first)
+        const candidateBranchIdRaw = String(
+          branchFromUrl || localStorage.getItem("tk-branchId") || ""
+        ).trim();
+        const candidateBranchId = candidateBranchIdRaw ? Number(candidateBranchIdRaw) : "";
+        const firstBranchId = b?.[0]?.branchId ?? "";
+        let pick = candidateBranchId || firstBranchId || "";
+
+        if (pick && !b.some((x) => Number(x.branchId) === Number(pick))) {
+          pick = firstBranchId || "";
+        }
+
+        if (pick) {
           setSelectedBranchId(pick);
           localStorage.setItem("tk-branchId", String(pick));
+        } else {
+          setSelectedBranchId("");
+          localStorage.removeItem("tk-branchId");
         }
       } catch (e) {
         if (!alive) return;
         setError(e?.message || "Gagal mengambil data");
+        setWorkspaceValid(false);
+        setActiveWorkspaceId("");
+        setBranches([]);
+        setItems([]);
       } finally {
         if (!alive) return;
         setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
-  }, []);
+  }, [email, wsFromUrl, branchFromUrl]);
 
   const selectedBranch = useMemo(() => {
     const id = Number(selectedBranchId);
     return branches.find((b) => Number(b.branchId) === id) || null;
   }, [branches, selectedBranchId]);
+
+  const allowedBranchIds = useMemo(() => {
+    return new Set((branches || []).map((b) => Number(b.branchId)));
+  }, [branches]);
 
   const filtered = useMemo(() => {
     const id = Number(selectedBranchId);
@@ -420,7 +511,7 @@ export default function BankInfoPage() {
         await editAtmAtm0300(payload);
       }
 
-      await reloadAtm();
+      await reloadAtm(allowedBranchIds);
       closeModal();
     } catch (e) {
       setError(e?.message || "Gagal simpan data");
@@ -435,7 +526,7 @@ export default function BankInfoPage() {
       setError("");
       await deleteAtmAtm0400({ atmId: String(id) });
       setConfirmDelete(null);
-      await reloadAtm();
+      await reloadAtm(allowedBranchIds);
     } catch (e) {
       setError(e?.message || "Gagal hapus data");
     } finally {
@@ -451,6 +542,7 @@ export default function BankInfoPage() {
   const pickBranch = (val) => {
     setSelectedBranchId(val);
     if (val) localStorage.setItem("tk-branchId", String(val));
+    else localStorage.removeItem("tk-branchId");
   };
 
   return (
@@ -578,7 +670,7 @@ export default function BankInfoPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button style={{ ...primaryCtaStyle, padding: "10px 16px" }} onClick={openAdd}>
+            <button style={{ ...primaryCtaStyle, padding: "10px 16px", opacity: !workspaceValid || !selectedBranchId ? 0.5 : 1, cursor: !workspaceValid || !selectedBranchId ? "not-allowed" : "pointer" }} onClick={openAdd} disabled={!workspaceValid || !selectedBranchId}>
               + Add ATM
             </button>
             <span style={badge}>

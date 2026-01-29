@@ -178,6 +178,7 @@ export default function ProfileAdminPage() {
 
   const [workspaces, setWorkspaces] = useState([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() => String(localStorage.getItem("tk-workspaceId") || "").trim());
   const [expandedWorkspaceId, setExpandedWorkspaceId] = useState("");
   const [wsEditingId, setWsEditingId] = useState("");
   const [wsDeletingId, setWsDeletingId] = useState("");
@@ -291,13 +292,6 @@ export default function ProfileAdminPage() {
     );
   }, [workspaceList, selectedWorkspaceId]);
 
-  // Sync workspaceId cache untuk flow lain (mis. insert branch)
-  useEffect(() => {
-    if (selectedWorkspaceId) {
-      localStorage.setItem("tk-workspaceId", String(selectedWorkspaceId));
-    }
-  }, [selectedWorkspaceId]);
-
   // Saat user pilih workspace → isi draft name
   const workspaceBranches = useMemo(() => {
     if (!selectedWorkspaceId) return [];
@@ -349,6 +343,32 @@ export default function ProfileAdminPage() {
     return out;
   }, [workspaces, selectedWorkspaceId, localWorkspaceAdmins]);
 
+  const myWorkspaceRole = useMemo(() => {
+    const map = new Map(); // workspaceId -> role (OWNER / ...)
+    const myEmail = String(authEmail || "").toLowerCase();
+
+    for (const r of workspaces) {
+      const wsId = String(r?.workspaceId || "").trim();
+      if (!wsId) continue;
+
+      const rowEmail = String(r?.email || r?.adminEmail || r?.admin_email || "").toLowerCase();
+      const rowAdminId = r?.adminId ?? r?.id ?? r?.admin_id;
+      const isMe =
+        (admin?.id != null && rowAdminId != null && Number(rowAdminId) === Number(admin.id)) ||
+        (myEmail && rowEmail && rowEmail === myEmail);
+
+      if (!isMe) continue;
+
+      const role = String(r?.hierarchy || r?.role || r?.level || "").trim().toUpperCase() || "MEMBER";
+      const prev = map.get(wsId);
+      if (prev === "OWNER") continue;
+      if (role === "OWNER") map.set(wsId, "OWNER");
+      else if (!prev) map.set(wsId, role);
+    }
+    return map;
+  }, [workspaces, admin, authEmail]);
+
+
   const onViewWorkspace = (wsId) => {
     const id = String(wsId || "");
     setSelectedWorkspaceId(id);
@@ -358,12 +378,24 @@ export default function ProfileAdminPage() {
     setDeleteWorkspaceBranchPreview(null);
   };
 
+  const onSwitchWorkspace = (ws) => {
+    const id = String(ws?.workspaceId || ws || "").trim();
+    if (!id) return;
+
+    // simpan workspace aktif untuk semua flow create/edit di seluruh aplikasi
+    localStorage.setItem("tk-workspaceId", id);
+    localStorage.removeItem("tk-branchId");
+    setActiveWorkspaceId(id);
+
+    // buka Home biar data langsung reload sesuai workspace aktif
+    navigate(`/home?workspaceId=${encodeURIComponent(id)}`);
+  };
+
     const onEditWorkspaceName = (workspace) => {
     const id = String(workspace?.workspaceId || "");
     if (!id) return;
 
     setSelectedWorkspaceId(id);
-    localStorage.setItem("tk-workspaceId", id);
 
     setWsEditName(String(workspace?.namaWorkspace || workspace?.workspaceName || ""));
     setWsEditModal({ workspaceId: id });
@@ -375,6 +407,12 @@ export default function ProfileAdminPage() {
     const id = String(wsEditModal?.workspaceId || "");
     const name = String(wsEditName || "").trim();
     if (!id) return;
+
+    const role = String(myWorkspaceRole.get(id) || "").toUpperCase();
+    if (role !== "OWNER") {
+      setWsError("Tidak punya akses. Hanya OWNER yang boleh edit workspace.");
+      return;
+    }
 
     if (!name) {
       setWsError("Nama workspace wajib diisi");
@@ -417,6 +455,12 @@ export default function ProfileAdminPage() {
     const id = String(wsId || "");
     if (!id) return;
 
+    const role = String(myWorkspaceRole.get(id) || "").toUpperCase();
+    if (role !== "OWNER") {
+      setWsError("Tidak punya akses. Hanya OWNER yang boleh delete workspace.");
+      return;
+    }
+
     const wsName = workspaceList.find((w) => String(w.workspaceId) === id)?.namaWorkspace;
     const label = String(wsName || "").trim() || "workspace ini";
     const ok = window.confirm(`Hapus ${label}?`);
@@ -458,7 +502,12 @@ export default function ProfileAdminPage() {
         setExpandedWorkspaceId("");
       }
     } catch (e) {
-      setWsError(e?.message || "Gagal delete workspace");
+      const msg = e?.message || "Gagal delete workspace";
+      if (String(msg).includes("403") || String(msg).toLowerCase().includes("forbidden")) {
+        setWsError("Tidak punya akses. Hanya OWNER yang boleh delete workspace.");
+      } else {
+        setWsError(msg);
+      }
     } finally {
       setWsDeletingId("");
     }
@@ -492,6 +541,12 @@ export default function ProfileAdminPage() {
   const onAddAdminToWorkspace = async () => {
     if (!selectedWorkspaceId) {
       setWsError("Pilih workspace dulu");
+      return;
+    }
+
+    const role = String(myWorkspaceRole.get(String(selectedWorkspaceId)) || "").toUpperCase();
+    if (role !== "OWNER") {
+      setWsError("Tidak punya akses. Hanya OWNER yang boleh menambah admin.");
       return;
     }
     const email =
@@ -831,20 +886,33 @@ export default function ProfileAdminPage() {
                           <button style={miniBtn("default")} onClick={() => onViewWorkspace(w.workspaceId)}>
                             View
                           </button>
+
                           <button
-                            style={miniBtn("primary")}
-                            onClick={() => onEditWorkspaceName(w)}
-                            disabled={wsEditingId === id}
+                            style={miniBtn(String(activeWorkspaceId) === String(id) ? "primary" : "default")}
+                            onClick={() => onSwitchWorkspace(w)}
+                            title="Set workspace aktif untuk semua proses input data"
                           >
-                            {wsEditingId === id ? "Saving..." : "Edit"}
+                            {String(activeWorkspaceId) === String(id) ? "Active" : "Switch Workspace"}
                           </button>
-                          <button
-                            style={miniBtn("danger")}
-                            onClick={() => onDeleteWorkspace(w.workspaceId)}
-                            disabled={wsDeletingId === id}
-                          >
-                            {wsDeletingId === id ? "Deleting..." : "Delete"}
-                          </button>
+
+                          {String(myWorkspaceRole.get(id) || "").toUpperCase() === "OWNER" ? (
+                            <>
+                              <button
+                                style={miniBtn("primary")}
+                                onClick={() => onEditWorkspaceName(w)}
+                                disabled={wsEditingId === id}
+                              >
+                                {wsEditingId === id ? "Saving..." : "Edit"}
+                              </button>
+                              <button
+                                style={miniBtn("danger")}
+                                onClick={() => onDeleteWorkspace(w.workspaceId)}
+                                disabled={wsDeletingId === id}
+                              >
+                                {wsDeletingId === id ? "Deleting..." : "Delete"}
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -863,6 +931,7 @@ export default function ProfileAdminPage() {
             </h3>
 
             {/* ADD ADMIN TO WORKSPACE */}
+            {String(myWorkspaceRole.get(String(selectedWorkspaceId)) || "").toUpperCase() === "OWNER" ? (
             <div style={{ borderTop: "1px solid var(--card-border)", paddingTop: 14, marginTop: 14 }}>
               <h4 style={{ fontWeight: 900, marginBottom: 8 }}>Tambah Admin ke Workspace</h4>
 
@@ -913,6 +982,13 @@ export default function ProfileAdminPage() {
                 </div>
               )}
             </div>
+
+            ) : (
+              <div style={{ borderTop: "1px solid var(--card-border)", paddingTop: 14, marginTop: 14, opacity: 0.85 }}>
+                <h4 style={{ fontWeight: 900, marginBottom: 8 }}>Tambah Admin ke Workspace</h4>
+                <div style={{ opacity: 0.8 }}>-</div>
+              </div>
+            )}
 
             {/* ADMIN LIST */}
             <div style={{ borderTop: "1px solid var(--card-border)", paddingTop: 14, marginTop: 14 }}>

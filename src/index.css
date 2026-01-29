@@ -38,6 +38,9 @@ body {
   --card-text-main: #f9fafb;
   --card-text-sub: #9ca3af;
 
+  /* alias yang dipakai oleh beberapa inline-style */
+  --text: var(--card-text-main);
+
   --toggle-bg: rgba(15, 23, 42, 0.6);
   --toggle-text: #e5e7eb;
 
@@ -127,6 +130,19 @@ body {
   background-position: center top;
   background-attachment: fixed; 
   color: var(--card-text-main);
+}
+
+/* =====================
+   GLOBAL SELECT (dark mode friendly)
+   ===================== */
+select {
+  color: var(--text);
+  background: var(--input-bg);
+}
+
+select option {
+  background-color: var(--select-option-bg);
+  color: var(--select-option-text);
 }
 
 
@@ -380,3 +396,8 @@ button {
 }
 
 
+
+
+/* Ensure native form controls (select dropdown, date picker) follow theme */
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }

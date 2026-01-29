@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getAllAtmAtm0200 } from "../api/tikusClient.js";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getAllAtmAtm0200, getAllBranchBro0400 } from "../api/tikusClient.js";
+import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
 
 const primaryCtaStyle = {
@@ -497,8 +498,14 @@ function CumulativeAreaChart({ points, height = 260 }) {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const email = localStorage.getItem("authEmail") || "";
+
+  const wsFromUrl = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return String(qs.get("workspaceId") || "").trim();
+  }, [location.search]);
   const [theme, setTheme] = useState(() => localStorage.getItem("tk-theme") || "dark");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -520,15 +527,64 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [lastRefresh, setLastRefresh] = useState("");
 
+  const [workspaceValid, setWorkspaceValid] = useState(true);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(() =>
+    String(localStorage.getItem("tk-workspaceId") || "").trim()
+  );
+
   const fetchAll = async () => {
     setLoading(true);
     setError("");
+
     try {
+      // 1) validasi workspace user (wsp0300)
+      const wsRes = email ? await getAllWorkspaceByAdminWsp0300(email) : { resultList: [] };
+      const wsRows = Array.isArray(wsRes?.resultList) ? wsRes.resultList : [];
+      const allowedWorkspaceIds = Array.from(
+        new Set(wsRows.map((r) => String(r.workspaceId || "").trim()).filter(Boolean))
+      );
+
+      const cachedWsId = String(localStorage.getItem("tk-workspaceId") || "").trim();
+        let candidateWsId = "";
+        if (cachedWsId && allowedWorkspaceIds.includes(cachedWsId)) candidateWsId = cachedWsId;
+        else if (wsFromUrl && allowedWorkspaceIds.includes(String(wsFromUrl).trim())) candidateWsId = String(wsFromUrl).trim();
+        else if (allowedWorkspaceIds.length === 1) candidateWsId = allowedWorkspaceIds[0];
+
+        const wsOk = !!candidateWsId;
+
+      if (!wsOk) {
+        localStorage.removeItem("tk-workspaceId");
+        localStorage.removeItem("tk-branchId");
+        setWorkspaceValid(false);
+        setActiveWorkspaceId("");
+        setRows([]);
+        setLastRefresh("");
+        return;
+      }
+
+      localStorage.setItem("tk-workspaceId", candidateWsId);
+      setWorkspaceValid(true);
+      setActiveWorkspaceId(candidateWsId);
+
+      // 2) branches scoped by workspace -> allowedBranchIds
+      const br = await getAllBranchBro0400();
+      const allBranches = Array.isArray(br?.resultList) ? br.resultList : [];
+      const scopedBranches = allBranches.filter(
+        (b) => String(b.workspaceId || "").trim() === String(candidateWsId).trim()
+      );
+      const allowedBranchIds = new Set(scopedBranches.map((b) => Number(b.branchId)));
+
+      // 3) ATM scoped by allowed branches
       const res = await getAllAtmAtm0200();
       const list = Array.isArray(res?.resultList) ? res.resultList : [];
-      setRows(list);
+      const scoped = list.filter((x) => x?.branchId != null && allowedBranchIds.has(Number(x.branchId)));
+
+      setRows(scoped);
       setLastRefresh(new Date().toLocaleString("id-ID"));
     } catch (e) {
+      setRows([]);
+      setWorkspaceValid(false);
+      setActiveWorkspaceId("");
       setError(e?.message || "Gagal ambil data");
     } finally {
       setLoading(false);
@@ -537,7 +593,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchAll();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, wsFromUrl]);
 
 const summary = useMemo(() => {
   const count = rows.length;
@@ -704,7 +761,7 @@ const donutData = useMemo(() => {
   const isInitialLoading = loading && rows.length === 0;
 
   return (
-    <div className="tk-page" style={pageWrap}>
+    <div className="tk-page" style={{...pageWrap, opacity: workspaceValid ? 1 : 0.92}} data-ws-ready={activeWorkspaceId ? "1" : "0"}>
       <style>{`
         @keyframes tkShimmer {
           0% { background-position: 100% 0; }
