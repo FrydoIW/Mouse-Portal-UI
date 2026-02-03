@@ -267,7 +267,7 @@ export default function BankInfoPage() {
   };
 
   // ATM No formatting: group by 4 digits with '-' and limit to 12 digits (backend limit)
-  const sanitizeAtmNo = (v) => String(v ?? "").replace(/\D/g, "").slice(0, 12);
+  const sanitizeAtmNo = (v) => String(v ?? "").replace(/\D/g, "").slice(0, 16);
   const formatAtmNo = (v) => {
     const digits = sanitizeAtmNo(v);
     const groups = digits.match(/.{1,4}/g) || [];
