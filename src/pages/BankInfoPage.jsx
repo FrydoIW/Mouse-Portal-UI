@@ -864,8 +864,8 @@ export default function BankInfoPage() {
                   <input
                     style={input}
                     inputMode="numeric"
-                    placeholder="____-____-____"
-                    maxLength={14}
+                    placeholder="____-____-____-____"
+                    maxLength={19}
                     value={form.atmNo}
                     onChange={(e) => setForm((p) => ({ ...p, atmNo: formatAtmNo(e.target.value) }))}
                   />
