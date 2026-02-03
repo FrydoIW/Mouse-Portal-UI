@@ -266,6 +266,14 @@ export default function BankInfoPage() {
     return `${s.slice(0, 2)}••••${s.slice(-2)}`;
   };
 
+  // ATM No formatting: group by 4 digits with '-' and limit to 12 digits (backend limit)
+  const sanitizeAtmNo = (v) => String(v ?? "").replace(/\D/g, "").slice(0, 12);
+  const formatAtmNo = (v) => {
+    const digits = sanitizeAtmNo(v);
+    const groups = digits.match(/.{1,4}/g) || [];
+    return groups.join("-");
+  };
+
   async function reloadBranches(scopeWorkspaceId = activeWorkspaceId) {
     if (!scopeWorkspaceId) {
       setBranches([]);
@@ -462,6 +470,7 @@ export default function BankInfoPage() {
       ...emptyAtmForm,
       ...item,
       branchId: Number(item.branchId ?? selectedBranchId),
+      atmNo: formatAtmNo(item.atmNo),
       expiredKtpDt: toDateInput(item.expiredKtpDt),
       atmExpiredDt: toDateInput(item.atmExpiredDt),
       birthDt: toDateInput(item.birthDt),
@@ -481,6 +490,9 @@ export default function BankInfoPage() {
 
   const submit = async () => {
     const payload = { ...form, branchId: Number(form.branchId || selectedBranchId || 0) };
+
+    // backend stores ATM No as max 12 digits
+    payload.atmNo = sanitizeAtmNo(payload.atmNo);
 
     payload.saldo = Number(payload.saldo || 0);
     payload.masaSewaBank = payload.masaSewaBank === "" ? "" : Number(payload.masaSewaBank || 0);
@@ -752,7 +764,7 @@ export default function BankInfoPage() {
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)", fontWeight: 800 }}>{it.rekeningNm}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.bankNm}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.rekNo}</td>
-                    <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.atmNo}</td>
+                    <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{formatAtmNo(it.atmNo)}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{it.rekType}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>{String(it.status || "ACTIVE")}</td>
                     <td style={{ padding: "12px 10px", borderBottom: "1px solid rgba(148,163,184,0.12)" }}>Rp {formatIdr(it.saldo)}</td>
@@ -849,7 +861,14 @@ export default function BankInfoPage() {
               <div style={grid3}>
                 <div style={field}>
                   <div style={label}>ATM No</div>
-                  <input style={input} value={form.atmNo} onChange={(e) => setForm((p) => ({ ...p, atmNo: e.target.value }))} />
+                  <input
+                    style={input}
+                    inputMode="numeric"
+                    placeholder="____-____-____"
+                    maxLength={14}
+                    value={form.atmNo}
+                    onChange={(e) => setForm((p) => ({ ...p, atmNo: formatAtmNo(e.target.value) }))}
+                  />
                 </div>
                 <div style={field}>
                   <div style={label}>Saldo (Rp)</div>
