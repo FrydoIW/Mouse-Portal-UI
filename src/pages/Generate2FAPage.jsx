@@ -1,5 +1,5 @@
 // src/pages/Generate2FAPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout.jsx";
 import { generate2faQrAdm0200 } from "../api/adminClient.js";
@@ -14,6 +14,11 @@ export default function Generate2FAPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  // Dev-only note:
+  // React StrictMode (development) will intentionally mount components twice.
+  // Without a guard, the auto-generate effect below can fire twice and double-hit the API.
+  const didAutoGenerateRef = useRef(false);
 
   const canAccess = useMemo(() => {
     const allowEmail = localStorage.getItem("allowGenerate2faEmail") || "";
@@ -53,8 +58,12 @@ export default function Generate2FAPage() {
   };
 
   useEffect(() => {
-    if (canAccess) generate();
-  }, []);
+    if (!canAccess) return;
+    if (didAutoGenerateRef.current) return;
+    didAutoGenerateRef.current = true;
+    generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canAccess]);
 
   if (!presetEmail || !canAccess) {
     return (
