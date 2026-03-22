@@ -13,7 +13,7 @@ import {
   updateTkd0300,
   deleteTkd0400,
 } from "../api/tikusClient.js";
-import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
+import { getAllWorkspaceByAdminWsp0300, getAdminDataAdm0600 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
 
 const POSITION_OPTIONS = [
@@ -207,6 +207,37 @@ function HomePage() {
   }, [theme]);
   const toggleTheme = () => setTheme((p) => (p === "dark" ? "light" : "dark"));
 
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        if (!email) return;
+
+        const cached = String(localStorage.getItem("tk-adminEntry") || "").trim();
+        if (cached) {
+          if (active) setAdminEntry(cached);
+          return;
+        }
+
+        const res = await getAdminDataAdm0600(email);
+        const out = res?.output || {};
+        const resolved = String(out?.id ?? out?.adminId ?? out?.admin_id ?? "").trim();
+
+        if (!active || !resolved) return;
+
+        setAdminEntry(resolved);
+        localStorage.setItem("tk-adminEntry", resolved);
+      } catch (_) {
+        // silent fallback: submit/delete akan validasi lagi saat dipakai
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [email]);
+
   // DATA
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -223,6 +254,7 @@ function HomePage() {
   });
 
   const [members, setMembers] = useState([]);
+  const [adminEntry, setAdminEntry] = useState(() => String(localStorage.getItem("tk-adminEntry") || "").trim());
 
   // UI
   const [searchQuery, setSearchQuery] = useState("");
@@ -533,6 +565,25 @@ function HomePage() {
     setConfirmDelete({ type: "member", payload: { refNo: item.refNo, name: item.name, email: item.email } });
   };
 
+  const resolveAdminEntry = async () => {
+    const cached = String(adminEntry || localStorage.getItem("tk-adminEntry") || "").trim();
+    if (cached) return cached;
+
+    if (!email) throw new Error("Session admin tidak ditemukan.");
+
+    const res = await getAdminDataAdm0600(email);
+    const out = res?.output || {};
+    const resolved = String(out?.id ?? out?.adminId ?? out?.admin_id ?? "").trim();
+
+    if (!resolved) {
+      throw new Error("Admin Entry tidak ditemukan. Silakan login ulang.");
+    }
+
+    setAdminEntry(resolved);
+    localStorage.setItem("tk-adminEntry", resolved);
+    return resolved;
+  };
+
   const submitMember = async () => {
     const payload = { ...memberForm };
     payload.branchId = Number(payload.branchId || selectedBranchId || 0);
@@ -553,6 +604,9 @@ function HomePage() {
 
     try {
       setMemberBusy(true);
+      const currentAdminEntry = await resolveAdminEntry();
+      payload.adminEntry = currentAdminEntry;
+
       if (memberModal?.mode === "add") {
         // register endpoint does not need refNo
         delete payload.refNo;
@@ -574,7 +628,8 @@ function HomePage() {
   const doDeleteMember = async (refNo) => {
     try {
       setMemberBusy(true);
-      await deleteTkd0400({ refNo });
+      const currentAdminEntry = await resolveAdminEntry();
+      await deleteTkd0400({ refNo, adminEntry: currentAdminEntry });
       setToast({ type: "success", text: "User berhasil dihapus." });
       setConfirmDelete(null);
       await reloadMembers();
@@ -634,6 +689,7 @@ function HomePage() {
                 <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>BANK INFO</button>
                 <button style={pillBtn(false)} onClick={() => navigate("/expense")}>EXPENSE</button>
                 <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>DASHBOARD</button>
+                <button style={pillBtn(false)} onClick={() => navigate("/history")}>HISTORY</button>
               </div>
             </div>
 

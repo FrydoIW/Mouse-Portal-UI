@@ -894,6 +894,9 @@ const donutData = useMemo(() => {
             <button style={{ ...pillBtn(true), ...primaryCtaStyle, padding: "10px 16px" }} disabled>
               DASHBOARD
             </button>
+            <button style={pillBtn(false)} onClick={() => navigate("/history")}>
+              HISTORY
+            </button>
           </div>
         </div>
 

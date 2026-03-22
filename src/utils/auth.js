@@ -39,6 +39,7 @@ export function clearSession() {
     "isLogin",
     "isLoggedIn",
     "user",
+    "tk-adminEntry",
   ];
   keys.forEach((k) => localStorage.removeItem(k));
 }

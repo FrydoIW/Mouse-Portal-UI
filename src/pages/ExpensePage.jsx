@@ -421,6 +421,7 @@ export default function ExpensePage() {
           <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>BANK INFO</button>
           <button style={pillBtn(true)} disabled>EXPENSE</button>
           <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>DASHBOARD</button>
+          <button style={pillBtn(false)} onClick={() => navigate("/history")}>HISTORY</button>
         </div>
       </div>
 

@@ -630,6 +630,9 @@ export default function BankInfoPage() {
           <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>
             DASHBOARD
           </button>
+          <button style={pillBtn(false)} onClick={() => navigate("/history")}>
+            HISTORY
+          </button>
         </div>
       </div>
 
