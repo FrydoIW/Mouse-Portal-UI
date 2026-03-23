@@ -10,6 +10,7 @@ import {
 } from "../api/tikusClient.js";
 import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
+import { resolveAdminEntry } from "../utils/adminEntry.js";
 
 function formatIdr(val) {
   const n = Number(val ?? 0);
@@ -308,7 +309,8 @@ export default function BankInfoPage() {
         setError("");
         setKtpBusyId(atmId);
         const base64 = await fileToBase64Bytes(file);
-        await uploadKtpAtm0500({ atmId: Number(atmId), ktpImage: base64 });
+        const currentAdminEntry = await resolveAdminEntry(email);
+        await uploadKtpAtm0500({ atmId: Number(atmId), ktpImage: base64, adminEntry: currentAdminEntry });
         setInfo("SUCCESS UPLOAD KTP");
         await reloadAtm(allowedBranchIds);
       } catch (err) {
@@ -515,6 +517,8 @@ export default function BankInfoPage() {
     try {
       setBusy(true);
       setError("");
+      const currentAdminEntry = await resolveAdminEntry(email);
+      payload.adminEntry = currentAdminEntry;
 
       if (mode === "add") {
         delete payload.id;
@@ -629,6 +633,9 @@ export default function BankInfoPage() {
           </button>
           <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>
             DASHBOARD
+          </button>
+          <button style={pillBtn(false)} onClick={() => navigate("/history")}>
+            HISTORY
           </button>
         </div>
       </div>

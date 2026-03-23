@@ -10,6 +10,7 @@ import {
 } from "../api/tikusClient.js";
 import { getAllWorkspaceByAdminWsp0300 } from "../api/adminClient.js";
 import { clearSession } from "../utils/auth.js";
+import { resolveAdminEntry } from "../utils/adminEntry.js";
 
 function toDateInput(value) {
   if (!value) return "";
@@ -347,6 +348,10 @@ export default function ExpensePage() {
 
     try {
       setBusy(true);
+      setError("");
+      const currentAdminEntry = await resolveAdminEntry(email);
+      payload.adminEntry = currentAdminEntry;
+
       if (mode === "add") {
         delete payload.id;
         await insertExpenseExp0100(payload);
@@ -421,6 +426,7 @@ export default function ExpensePage() {
           <button style={pillBtn(false)} onClick={() => navigate("/bank-info")}>BANK INFO</button>
           <button style={pillBtn(true)} disabled>EXPENSE</button>
           <button style={pillBtn(false)} onClick={() => navigate("/dashboard")}>DASHBOARD</button>
+          <button style={pillBtn(false)} onClick={() => navigate("/history")}>HISTORY</button>
         </div>
       </div>
 

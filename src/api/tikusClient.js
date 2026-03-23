@@ -112,3 +112,10 @@ export async function deleteExpenseExp0300(payload) {
 export async function getAllExpenseExp0400() {
   return postJson("/getAllExpense/exp0400", { getAllData: "" });
 }
+
+// =======================
+// HISTORY (HISxxxx)
+// =======================
+export async function getHistoryHis0100(payload) {
+  return postJson("/getHistory/his0100", payload);
+}

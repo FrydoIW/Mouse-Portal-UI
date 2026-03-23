@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import BankInfoPage from "./pages/BankInfoPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ExpensePage from "./pages/ExpensePage.jsx";
+import HistoryPage from "./pages/HistoryPage.jsx";
 
 
 function App() {
@@ -62,6 +63,16 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <HistoryPage />
           </ProtectedRoute>
         }
       />
